@@ -155,7 +155,7 @@ services:
     # ... other configuration ...
     volumes:
       - .:/workspaces/${PWD##*/}
-      - claude-config:/home/claude/.claude
+      - claude-home:/home/claude
       # Shadow credential files (appear empty to Claude)
       - /dev/null:/workspaces/${PWD##*/}/.env:ro
       - /dev/null:/workspaces/${PWD##*/}/.credentials.json:ro
@@ -211,7 +211,7 @@ services:
   claude:
     # ... other configuration ...
     volumes:
-      - .:/workspaces/${PWD##*/}
+      - ...
       - claude-config:/home/claude/.claude  # Required for viewer
 ```
 

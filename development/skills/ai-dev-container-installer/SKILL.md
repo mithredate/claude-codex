@@ -1,6 +1,6 @@
 ---
 name: ai-dev-container-installer
-description: "Set up AI Dev Container integration in any Docker-based project. Use when: user asks to 'add claude container', 'setup ai-dev-container', 'integrate claude container', 'add claude to docker compose', or wants Claude Code running as a container service with bridge command routing to project containers."
+description: "Set up AI Dev Container integration in any Docker-based project. Use when: user asks to 'add claude container', 'setup ai-dev-container', 'integrate claude container', 'add claude to docker compose', 'containerize claude', 'run claude in docker', 'add claude sidecar', or wants Claude Code running as a container service with bridge command routing to project containers."
 ---
 
 # AI Dev Container Installer
@@ -12,13 +12,13 @@ Set up Claude Brain Sidecar to run Claude Code in a container that delegates com
 1. Analyze project structure (tech stack, existing compose file, containers)
 2. Update/create compose.yml with required services
 3. Create `.aidevcontainer/bridge.yaml` with command mappings
-4. Create CLAUDE.md with project documentation
-5. Optionally create `.aidevcontainer/allowed-domains.txt` for firewall
-6. Optionally shadow credential files to hide secrets from Claude
+4. Optionally create `.aidevcontainer/allowed-domains.txt` for firewall
+5. Optionally shadow credential files to hide secrets from Claude
 
 ## Step 1: Analyze Project
 
 Identify:
+
 - Tech stack (language, framework, package manager)
 - Existing `compose.yml` or `docker-compose.yml`
 - Container services and their purposes
@@ -27,7 +27,7 @@ Identify:
 
 ## Step 2: Update Docker Compose
 
-Add these services to compose file (create if missing):
+Add these services to compose file. If no compose file exists, create `compose.yml`.
 
 ```yaml
 services:
@@ -54,10 +54,18 @@ services:
       BRIDGE_ENABLED: "1"
     volumes:
       - .:/workspaces/${PWD##*/}
-      - claude-config:/home/claude/.claude
+      - claude-home:/home/claude/
+      # Optional: Install Viewer (see Viewer (Optional))
+      # - claude-config:/home/claude/.claude
+      # Optional: shadow credentials (see Step 5)
+      # - /dev/null:/workspaces/${PWD##*/}/.env:ro
+      # Optional: mount Claude credentials for macOS (see Step 6)
+      # - ./.credentials.json:/home/claude/.claude/.credentials.json:ro
 
 volumes:
-  claude-config:
+  claude-home:
+  # Optional: Install Viewer (see Viewer (Optional))
+  # claude-config:
 ```
 
 ## Step 3: Create Bridge Configuration
@@ -82,6 +90,7 @@ commands:
 ```
 
 Map commands based on detected tech stack:
+
 - **PHP**: `php`, `composer`
 - **Node**: `node`, `npm`, `npx`, `yarn`, `pnpm`
 - **Python**: `python`, `pip`, `pytest`, `poetry`
@@ -90,49 +99,18 @@ Map commands based on detected tech stack:
 
 Note: Commands like `artisan`, `phpunit`, `phpstan` are invoked via `php` and get intercepted automatically.
 
-## Step 4: Create CLAUDE.md
+### Container Name Resolution
 
-Create `CLAUDE.md` at project root:
+Container names follow the format `<project>-<service>-1` where `<project>` is the directory name. If containers aren't running yet:
 
-```markdown
-# Project Name
+1. Ask user for expected container names, or
+2. Use `docker compose config --services` to list services, then derive names
 
-## Tech Stack
-- [Language/Framework]
-- [Database]
-- [Other services]
-
-## Container Topology
-
-| Container | Purpose | Workdir | Image |
-|-----------|---------|---------|-------|
-| project-app-1 | Main app | /app | ... |
-
-## Bridge Commands
-
-Run commands via bridge:
-- `bridge php artisan migrate`
-- `bridge npm install`
-- `bridge composer require package`
-
-## Testing
-- `bridge <test-command>`
-
-## Do NOT
-- Install packages in Claude container (use bridge)
-- Run runtime commands directly (use bridge)
-- Assume database is on localhost (use container hostname)
-- Mount sensitive directories (~/.ssh, ~/.aws)
-
-## Workspace Path
-The project is mounted at `/workspaces/<project-folder>` inside the Claude container.
-```
-
-## Step 5: Allowed Domains (Optional)
+## Step 4: Allowed Domains (Optional)
 
 If project needs external API access, create `.aidevcontainer/allowed-domains.txt`:
 
-```
+```text
 # Package registries
 registry.npmjs.org
 pypi.org
@@ -143,50 +121,17 @@ api.example.com
 
 Default allowed: Anthropic services, GitHub (auto-fetched), npm registry.
 
-## Step 6: Shadow Credential Files (Optional)
+## Step 5: Shadow Credential Files (Optional)
 
-Ask the user if they want to hide sensitive credential files from Claude. This mounts `/dev/null` over credential files, making them appear empty to Claude while keeping the actual files intact on the host.
+Ask user if they want to hide sensitive credential files from Claude.
 
-If user wants credential shadowing, add volume mounts to the claude service:
+See [references/credential-shadowing.md](references/credential-shadowing.md) for discovery patterns and configuration.
 
-```yaml
-services:
-  claude:
-    # ... other configuration ...
-    volumes:
-      - .:/workspaces/${PWD##*/}
-      - claude-home:/home/claude
-      # Shadow credential files (appear empty to Claude)
-      - /dev/null:/workspaces/${PWD##*/}/.env:ro
-      - /dev/null:/workspaces/${PWD##*/}/.credentials.json:ro
-```
+## Step 6: Mount Claude Credentials (Optional - macOS)
 
-Common files to shadow:
-- `.env`, `.env.local`, `.env.production`
-- `.credentials.json`, `credentials.json`
-- `secrets.yaml`, `secrets.json`
-- `.npmrc` (if contains auth tokens)
-- `service-account.json`
+On macOS, Claude Code stores credentials in the macOS Keychain. To use these credentials in the container:
 
-**User instructions for adding more shadowed files:**
-
-To hide additional credential files from Claude, add volume mounts in this format:
-
-```yaml
-volumes:
-  - /dev/null:/workspaces/<project-folder>/<path-to-sensitive-file>:ro
-```
-
-For example, to shadow a database config file:
-```yaml
-- /dev/null:/workspaces/<project-folder>/config/database.yml:ro
-```
-
-## Step 7: Mount Claude Credentials (Optional - macOS)
-
-On macOS, Claude Code stores credentials in the macOS Keychain. To use these credentials in the container, the user can export them to a file and mount it.
-
-**Export credentials from macOS Keychain:**
+**Export credentials:**
 
 ```bash
 security find-generic-password -s "Claude Code-credentials" -w > .credentials.json
@@ -194,23 +139,13 @@ security find-generic-password -s "Claude Code-credentials" -w > .credentials.js
 
 **Add to `.gitignore`:**
 
-```gitignore
+```text
 .credentials.json
 ```
 
-**Mount in compose.yml:**
+**Uncomment in compose.yml** the credentials mount line under the claude service volumes.
 
-```yaml
-services:
-  claude:
-    # ... other configuration ...
-    volumes:
-      - .:/workspaces/${PWD##*/}
-      - claude-config:/home/claude/.claude
-      - ./.credentials.json:/home/claude/.claude/.credentials.json:ro
-```
-
-**Note:** The credentials file contains sensitive API keys. Ensure it's added to `.gitignore` and never committed to version control.
+**Note:** The credentials file contains sensitive API keys. Never commit to version control.
 
 ## Post-Setup Commands
 
@@ -232,32 +167,22 @@ docker compose down
 
 ## Viewer (Optional)
 
-If user wants monitoring, add viewer service.
+If user wants monitoring, see [references/viewer-setup.md](references/viewer-setup.md).
 
-**Important**: The viewer requires the `claude-config` volume to access Claude's data. Ensure the claude service mounts this volume:
+## Error Handling
 
-```yaml
-services:
-  claude:
-    # ... other configuration ...
-    volumes:
-      - ...
-      - claude-config:/home/claude/.claude  # Required for viewer
-```
+### No compose.yml exists
 
-Then add the viewer service:
+Create a new `compose.yml` with the services from Step 2.
 
-```yaml
-services:
-  viewer:
-    image: node:20-alpine
-    command: ["npx", "@kimuson/claude-code-viewer@latest", "--hostname", "0.0.0.0"]
-    environment:
-      - PORT=${VIEWER_PORT:-3000}
-      - CCV_GLOBAL_CLAUDE_DIR=/claude-data
-    ports:
-      - "${VIEWER_PORT:-3000}:${VIEWER_PORT:-3000}"
-    volumes:
-      - claude-config:/claude-data:ro  # Reads from claude's config volume
-    restart: unless-stopped
-```
+### Container names unknown
+
+If containers aren't running and names can't be determined:
+
+1. List services with `docker compose config --services`
+2. Derive names using pattern `<directory>-<service>-1`
+3. Confirm with user before writing bridge config
+
+### Bridge command failures
+
+Bridge commands may fail silently if the target container isn't running or the command doesn't exist. The bridge does not currently provide error feedback - commands simply won't execute. Ensure containers are running before using bridge commands.

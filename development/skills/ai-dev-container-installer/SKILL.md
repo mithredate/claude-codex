@@ -1,6 +1,6 @@
 ---
 name: ai-dev-container-installer
-description: "Set up Claude Brain Sidecar (ai-dev-container) integration in any Docker-based project. Use when: user asks to 'add claude sidecar', 'setup ai-dev-container', 'integrate claude brain', 'add claude to docker compose', or wants Claude Code running as a container service with bridge command routing to project containers."
+description: "Set up AI Dev Container integration in any Docker-based project. Use when: user asks to 'add claude container', 'setup ai-dev-container', 'integrate claude container', 'add claude to docker compose', or wants Claude Code running as a container service with bridge command routing to project containers."
 ---
 
 # AI Dev Container Installer
@@ -53,7 +53,7 @@ services:
       DOCKER_HOST: tcp://socket-proxy:2375
       BRIDGE_ENABLED: "1"
     volumes:
-      - .:/workspace
+      - .:/workspaces/${PWD##*/}
       - claude-config:/home/claude/.claude
 
 volumes:
@@ -78,7 +78,7 @@ commands:
     exec: <executable>
     workdir: <container-workdir>
     paths:
-      /workspace: <container-workdir>
+      /workspaces/<project-folder>: <container-workdir>
 ```
 
 Map commands based on detected tech stack:
@@ -123,6 +123,9 @@ Run commands via bridge:
 - Run runtime commands directly (use bridge)
 - Assume database is on localhost (use container hostname)
 - Mount sensitive directories (~/.ssh, ~/.aws)
+
+## Workspace Path
+The project is mounted at `/workspaces/<project-folder>` inside the Claude container.
 ```
 
 ## Step 5: Allowed Domains (Optional)
@@ -151,11 +154,11 @@ services:
   claude:
     # ... other configuration ...
     volumes:
-      - .:/workspace
+      - .:/workspaces/${PWD##*/}
       - claude-config:/home/claude/.claude
       # Shadow credential files (appear empty to Claude)
-      - /dev/null:/workspace/.env:ro
-      - /dev/null:/workspace/.credentials.json:ro
+      - /dev/null:/workspaces/${PWD##*/}/.env:ro
+      - /dev/null:/workspaces/${PWD##*/}/.credentials.json:ro
 ```
 
 Common files to shadow:
@@ -171,12 +174,12 @@ To hide additional credential files from Claude, add volume mounts in this forma
 
 ```yaml
 volumes:
-  - /dev/null:/workspace/<path-to-sensitive-file>:ro
+  - /dev/null:/workspaces/<project-folder>/<path-to-sensitive-file>:ro
 ```
 
 For example, to shadow a database config file:
 ```yaml
-- /dev/null:/workspace/config/database.yml:ro
+- /dev/null:/workspaces/<project-folder>/config/database.yml:ro
 ```
 
 ## Post-Setup Commands
@@ -208,7 +211,7 @@ services:
   claude:
     # ... other configuration ...
     volumes:
-      - .:/workspace
+      - .:/workspaces/${PWD##*/}
       - claude-config:/home/claude/.claude  # Required for viewer
 ```
 

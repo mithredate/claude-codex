@@ -13,7 +13,9 @@ Set up Claude Brain Sidecar to run Claude Code in a container that delegates com
 2. Update/create compose.yml with required services
 3. Create `.aidevcontainer/bridge.yaml` with command mappings
 4. Optionally create `.aidevcontainer/allowed-domains.txt` for firewall
-5. Optionally shadow credential files to hide secrets from Claude
+5. **Ask user about credential shadowing** → discover files → confirm selection → ask for missing → apply
+6. Mount Claude credentials (macOS only)
+7. **Ask user about viewer** → confirm port → apply configuration
 
 ## Step 1: Analyze Project
 
@@ -123,9 +125,54 @@ Default allowed: Anthropic services, GitHub (auto-fetched), npm registry.
 
 ## Step 5: Shadow Credential Files (Optional)
 
-Ask user if they want to hide sensitive credential files from Claude.
+**Interactive credential shadowing workflow:**
 
-See [references/credential-shadowing.md](references/credential-shadowing.md) for discovery patterns and configuration.
+### 5.1: Ask User
+
+Ask the user: "Would you like to shadow credential files? This hides sensitive files (like `.env`, API keys, certificates) from Claude by mounting `/dev/null` over them. The files remain intact on your host but appear empty inside the container."
+
+If user declines, skip to Step 6.
+
+### 5.2: Discover Credentials
+
+Scan for credential files using patterns from [references/credential-shadowing.md](references/credential-shadowing.md):
+
+```bash
+# Check gitignore patterns
+grep -E '\.(env|pem|key|crt|credentials|secret)|\bsecrets?\b|\bcredentials?\b|\.npmrc|service.account' .gitignore .dockerignore 2>/dev/null
+
+# Find actual files
+find . -maxdepth 3 -type f \( -name ".env*" -o -name "*.pem" -o -name "*.key" -o -name "*credentials*" -o -name "*secret*" -o -name ".npmrc" -o -name "service-account*.json" \) 2>/dev/null | grep -v node_modules | grep -v vendor
+```
+
+### 5.3: Confirm with User
+
+Present discovered files to user:
+
+"I found these potential credential files:
+
+- `.env`
+- `.env.local`
+- `config/secrets.yaml`
+
+Which of these would you like to shadow? (You can select all, some, or none)"
+
+### 5.4: Ask for Additional Files
+
+After confirming discovered files, ask: "Are there any other sensitive files you'd like to shadow that I didn't find? (e.g., custom config files with API keys, database credentials)"
+
+### 5.5: Apply Shadows
+
+Add confirmed files as volume mounts in compose.yml:
+
+```yaml
+volumes:
+  # Shadow credential files (appear empty to Claude)
+  - /dev/null:/workspaces/${PWD##*/}/.env:ro
+  - /dev/null:/workspaces/${PWD##*/}/.env.local:ro
+```
+
+See [references/credential-shadowing.md](references/credential-shadowing.md) for mount format and common files.
 
 ## Step 6: Mount Claude Credentials (Optional - macOS)
 
@@ -165,9 +212,27 @@ docker compose exec -e CLAUDE_YOLO=1 claude claude
 docker compose down
 ```
 
-## Viewer (Optional)
+## Step 7: Install Viewer (Optional)
 
-If user wants monitoring, see [references/viewer-setup.md](references/viewer-setup.md).
+**Interactive viewer setup workflow:**
+
+### 7.1: Ask User
+
+Ask the user: "Would you like to install the Claude Code Viewer? It provides a web interface to monitor Claude's activity in real-time."
+
+If user declines, skip to Error Handling section.
+
+### 7.2: Confirm Port
+
+Ask the user: "Which port would you like the viewer to run on? (Default: 3000)"
+
+### 7.3: Apply Configuration
+
+1. Uncomment `claude-config` volume mount in claude service
+2. Uncomment `claude-config:` in volumes section
+3. Add viewer service from [references/viewer-setup.md](references/viewer-setup.md) with confirmed port
+
+Inform user: "Viewer will be accessible at `http://localhost:<port>` after starting containers."
 
 ## Error Handling
 

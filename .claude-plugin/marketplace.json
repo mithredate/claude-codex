@@ -1,0 +1,23 @@
+{
+  "name": "claude-codex",
+  "source": {
+    "source": "github",
+    "repo": "mithredate/claude-codex"
+  },
+  "description": "Opinionated claude automation tools",
+  "version": "0.0.1",
+  "owner": {
+    "name": "Mehrdad Hedayati",
+    "email": "mehrdad.headyati@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "development",
+      "source": "./development",
+      "description": "Collection of development-specific tools",
+      "skills": [
+        "./skills/ai-dev-container-installer"
+      ]
+    }
+  ]
+}

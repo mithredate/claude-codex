@@ -182,6 +182,36 @@ For example, to shadow a database config file:
 - /dev/null:/workspaces/<project-folder>/config/database.yml:ro
 ```
 
+## Step 7: Mount Claude Credentials (Optional - macOS)
+
+On macOS, Claude Code stores credentials in the macOS Keychain. To use these credentials in the container, the user can export them to a file and mount it.
+
+**Export credentials from macOS Keychain:**
+
+```bash
+security find-generic-password -s "Claude Code-credentials" -w > .credentials.json
+```
+
+**Add to `.gitignore`:**
+
+```gitignore
+.credentials.json
+```
+
+**Mount in compose.yml:**
+
+```yaml
+services:
+  claude:
+    # ... other configuration ...
+    volumes:
+      - .:/workspaces/${PWD##*/}
+      - claude-config:/home/claude/.claude
+      - ./.credentials.json:/home/claude/.claude/.credentials.json:ro
+```
+
+**Note:** The credentials file contains sensitive API keys. Ensure it's added to `.gitignore` and never committed to version control.
+
 ## Post-Setup Commands
 
 Provide these commands to user:

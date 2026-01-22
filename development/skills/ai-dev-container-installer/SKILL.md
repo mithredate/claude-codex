@@ -14,6 +14,7 @@ Set up Claude Brain Sidecar to run Claude Code in a container that delegates com
 3. Create `.aidevcontainer/bridge.yaml` with command mappings
 4. Create CLAUDE.md with project documentation
 5. Optionally create `.aidevcontainer/allowed-domains.txt` for firewall
+6. Optionally shadow credential files to hide secrets from Claude
 
 ## Step 1: Analyze Project
 
@@ -139,6 +140,45 @@ api.example.com
 
 Default allowed: Anthropic services, GitHub (auto-fetched), npm registry.
 
+## Step 6: Shadow Credential Files (Optional)
+
+Ask the user if they want to hide sensitive credential files from Claude. This mounts `/dev/null` over credential files, making them appear empty to Claude while keeping the actual files intact on the host.
+
+If user wants credential shadowing, add volume mounts to the claude service:
+
+```yaml
+services:
+  claude:
+    # ... other configuration ...
+    volumes:
+      - .:/workspace
+      - claude-config:/home/claude/.claude
+      # Shadow credential files (appear empty to Claude)
+      - /dev/null:/workspace/.env:ro
+      - /dev/null:/workspace/.credentials.json:ro
+```
+
+Common files to shadow:
+- `.env`, `.env.local`, `.env.production`
+- `.credentials.json`, `credentials.json`
+- `secrets.yaml`, `secrets.json`
+- `.npmrc` (if contains auth tokens)
+- `service-account.json`
+
+**User instructions for adding more shadowed files:**
+
+To hide additional credential files from Claude, add volume mounts in this format:
+
+```yaml
+volumes:
+  - /dev/null:/workspace/<path-to-sensitive-file>:ro
+```
+
+For example, to shadow a database config file:
+```yaml
+- /dev/null:/workspace/config/database.yml:ro
+```
+
 ## Post-Setup Commands
 
 Provide these commands to user:
@@ -159,7 +199,20 @@ docker compose down
 
 ## Viewer (Optional)
 
-If user wants monitoring, add viewer service:
+If user wants monitoring, add viewer service.
+
+**Important**: The viewer requires the `claude-config` volume to access Claude's data. Ensure the claude service mounts this volume:
+
+```yaml
+services:
+  claude:
+    # ... other configuration ...
+    volumes:
+      - .:/workspace
+      - claude-config:/home/claude/.claude  # Required for viewer
+```
+
+Then add the viewer service:
 
 ```yaml
 services:
@@ -172,6 +225,6 @@ services:
     ports:
       - "${VIEWER_PORT:-3000}:${VIEWER_PORT:-3000}"
     volumes:
-      - claude-config:/claude-data:ro
+      - claude-config:/claude-data:ro  # Reads from claude's config volume
     restart: unless-stopped
 ```

@@ -1,6 +1,6 @@
 # Viewer Setup (Optional)
 
-Add a viewer service for monitoring Claude's activity.
+Add a viewer service for monitoring Claude's activity in real-time via web UI.
 
 ## Prerequisites
 
@@ -21,8 +21,8 @@ services:
     image: node:20-alpine
     command: ["npx", "@kimuson/claude-code-viewer@latest", "--hostname", "0.0.0.0"]
     environment:
-      - PORT=${VIEWER_PORT:-3000}
-      - CCV_GLOBAL_CLAUDE_DIR=/claude-data
+      PORT: ${VIEWER_PORT:-3000}
+      CCV_GLOBAL_CLAUDE_DIR: /claude-data
     ports:
       - "${VIEWER_PORT:-3000}:${VIEWER_PORT:-3000}"
     volumes:
@@ -32,4 +32,4 @@ services:
 
 ## Access
 
-After starting, access the viewer at `http://localhost:3000` (or configured port).
+After starting, access the viewer at `http://localhost:3000` (or configured port via `VIEWER_PORT` environment variable).

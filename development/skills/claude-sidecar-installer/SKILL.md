@@ -1,21 +1,21 @@
 ---
-name: ai-dev-container-installer
-description: "Set up AI Dev Container integration in any Docker-based project. Use when: user asks to 'add claude container', 'setup ai-dev-container', 'integrate claude container', 'add claude to docker compose', 'containerize claude', 'run claude in docker', 'add claude sidecar', or wants Claude Code running as a container service with bridge command routing to project containers."
+name: claude-sidecar-installer
+description: "Set up Claude Sidecar integration in any Docker-based project. Use when: user asks to 'add claude container', 'setup claude-sidecar', 'integrate claude container', 'add claude to docker compose', 'containerize claude', 'run claude in docker', 'add claude sidecar', or wants Claude Code running as a container service with bridge command routing to project containers."
 ---
 
-# AI Dev Container Installer
+# Claude Sidecar Installer
 
-Set up Claude Brain Sidecar to run Claude Code in a container that delegates commands to project containers via Docker socket proxy.
+Set up Claude Sidecar to run Claude Code in a container that delegates commands to project containers via Docker socket proxy.
 
 ## Workflow
 
 1. Analyze project structure (tech stack, existing compose file, containers)
 2. Update/create compose.yml with required services
-3. Create `.aidevcontainer/bridge.yaml` with command mappings
-4. Optionally create `.aidevcontainer/allowed-domains.txt` for firewall
-5. **Ask user about credential shadowing** → discover files → confirm selection → ask for missing → apply
-6. Mount Claude credentials (macOS only)
-7. **Ask user about viewer** → confirm port → apply configuration
+3. Create `.sidecar/bridge.yaml` with command mappings
+4. Optionally create `.sidecar/allowed-domains.txt` for firewall
+5. **Ask user about credential shadowing** -> discover files -> confirm selection -> ask for missing -> apply
+6. Mount Claude credentials (macOS/Linux)
+7. **Ask user about viewer** -> confirm port -> apply configuration
 
 ## Step 1: Analyze Project
 
@@ -35,6 +35,7 @@ Add these services to compose file. If no compose file exists, create `compose.y
 services:
   socket-proxy:
     image: tecnativa/docker-socket-proxy:latest
+    restart: unless-stopped
     environment:
       CONTAINERS: 1
       EXEC: 1
@@ -43,36 +44,38 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   claude:
-    image: ghcr.io/mithredate/ai-dev-container:latest
+    image: ghcr.io/mithredate/claude-sidecar:latest
     depends_on:
       - socket-proxy
     stdin_open: true
     tty: true
+    # Optional: Network firewall (remove cap_add to disable)
     cap_add:
       - NET_ADMIN
       - NET_RAW
     environment:
       DOCKER_HOST: tcp://socket-proxy:2375
       BRIDGE_ENABLED: "1"
+      # Optional: Override config directory location
+      # SIDECAR_CONFIG_DIR: /workspaces/myproject/.sidecar
     volumes:
-      - .:/workspaces/${PWD##*/}
-      - claude-home:/home/claude/
-      # Optional: Install Viewer (see Viewer (Optional))
-      # - claude-config:/home/claude/.claude
+      - .:/workspaces/<project-name>
+      - claude-config:/home/claude/.claude
       # Optional: shadow credentials (see Step 5)
-      # - /dev/null:/workspaces/${PWD##*/}/.env:ro
-      # Optional: mount Claude credentials for macOS (see Step 6)
+      # - /dev/null:/workspaces/<project-name>/.env:ro
+      # Optional: mount Claude credentials (see Step 6)
       # - ./.credentials.json:/home/claude/.claude/.credentials.json:ro
+    working_dir: /workspaces/<project-name>
 
 volumes:
-  claude-home:
-  # Optional: Install Viewer (see Viewer (Optional))
-  # claude-config:
+  claude-config:
 ```
+
+Replace `<project-name>` with the actual project directory name.
 
 ## Step 3: Create Bridge Configuration
 
-Create `.aidevcontainer/bridge.yaml`:
+Create `.sidecar/bridge.yaml`:
 
 ```yaml
 version: "1"
@@ -88,7 +91,7 @@ commands:
     exec: <executable>
     workdir: <container-workdir>
     paths:
-      /workspaces/<project-folder>: <container-workdir>
+      /workspaces/<project-name>: <container-workdir>
 ```
 
 Map commands based on detected tech stack:
@@ -96,7 +99,7 @@ Map commands based on detected tech stack:
 - **PHP**: `php`, `composer`
 - **Node**: `node`, `npm`, `npx`, `yarn`, `pnpm`
 - **Python**: `python`, `pip`, `pytest`, `poetry`
-- **Go**: `go`
+- **Go**: `go`, `gofmt`
 - **Ruby**: `ruby`, `bundle`, `rails`, `rake`
 
 Note: Commands like `artisan`, `phpunit`, `phpstan` are invoked via `php` and get intercepted automatically.
@@ -110,18 +113,16 @@ Container names follow the format `<project>-<service>-1` where `<project>` is t
 
 ## Step 4: Allowed Domains (Optional)
 
-If project needs external API access, create `.aidevcontainer/allowed-domains.txt`:
+If project needs external API access beyond defaults, create `.sidecar/allowed-domains.txt`:
 
 ```text
-# Package registries
-registry.npmjs.org
-pypi.org
-
 # Project-specific APIs
 api.example.com
 ```
 
-Default allowed: Anthropic services, GitHub (auto-fetched), npm registry.
+Default allowed: Anthropic services, GitHub (dynamic IPs), npm registry.
+
+To disable network firewall entirely, remove the `cap_add` section from compose.yml.
 
 ## Step 5: Shadow Credential Files (Optional)
 
@@ -168,20 +169,28 @@ Add confirmed files as volume mounts in compose.yml:
 ```yaml
 volumes:
   # Shadow credential files (appear empty to Claude)
-  - /dev/null:/workspaces/${PWD##*/}/.env:ro
-  - /dev/null:/workspaces/${PWD##*/}/.env.local:ro
+  - /dev/null:/workspaces/<project-name>/.env:ro
+  - /dev/null:/workspaces/<project-name>/.env.local:ro
 ```
 
 See [references/credential-shadowing.md](references/credential-shadowing.md) for mount format and common files.
 
-## Step 6: Mount Claude Credentials (Optional - macOS)
+## Step 6: Mount Claude Credentials (Optional)
 
-On macOS, Claude Code stores credentials in the macOS Keychain. To use these credentials in the container:
+Credentials persist in the `claude-config` Docker volume. On first run, Claude prompts for authentication.
 
-**Export credentials:**
+For MCP SSO support, extract and mount host credentials:
+
+**macOS:**
 
 ```bash
 security find-generic-password -s "Claude Code-credentials" -w > .credentials.json
+```
+
+**Linux:**
+
+```bash
+cp ~/.claude/.credentials.json .credentials.json
 ```
 
 **Add to `.gitignore`:**
@@ -192,7 +201,7 @@ security find-generic-password -s "Claude Code-credentials" -w > .credentials.js
 
 **Uncomment in compose.yml** the credentials mount line under the claude service volumes.
 
-**Note:** The credentials file contains sensitive API keys. Never commit to version control.
+**Re-authenticate:** `docker volume rm <project>_claude-config`
 
 ## Post-Setup Commands
 
@@ -228,9 +237,7 @@ Ask the user: "Which port would you like the viewer to run on? (Default: 3000)"
 
 ### 7.3: Apply Configuration
 
-1. Uncomment `claude-config` volume mount in claude service
-2. Uncomment `claude-config:` in volumes section
-3. Add viewer service from [references/viewer-setup.md](references/viewer-setup.md) with confirmed port
+Add viewer service from [references/viewer-setup.md](references/viewer-setup.md) with confirmed port.
 
 Inform user: "Viewer will be accessible at `http://localhost:<port>` after starting containers."
 

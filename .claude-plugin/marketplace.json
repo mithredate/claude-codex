@@ -5,7 +5,7 @@
     "repo": "mithredate/claude-codex"
   },
   "description": "Opinionated claude automation tools",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "owner": {
     "name": "Mehrdad Hedayati",
     "email": "mehrdad.headyati@gmail.com"
@@ -16,7 +16,7 @@
       "source": "./development",
       "description": "Collection of development-specific tools",
       "skills": [
-        "./skills/ai-dev-container-installer",
+        "./skills/claude-sidecar-installer",
         "./skills/claude-md-helper"
       ]
     }

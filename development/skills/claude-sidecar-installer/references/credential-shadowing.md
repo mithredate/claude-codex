@@ -27,9 +27,11 @@ Add volume mounts to the claude service:
 ```yaml
 volumes:
   # Shadow credential files (appear empty to Claude)
-  - /dev/null:/workspaces/${PWD##*/}/.env:ro
-  - /dev/null:/workspaces/${PWD##*/}/.credentials.json:ro
+  - /dev/null:/workspaces/<project-name>/.env:ro
+  - /dev/null:/workspaces/<project-name>/.credentials.json:ro
 ```
+
+Replace `<project-name>` with the actual project directory name.
 
 ## Common Files to Shadow
 
@@ -44,11 +46,11 @@ volumes:
 To shadow additional files, add volume mounts in this format:
 
 ```yaml
-- /dev/null:/workspaces/<project-folder>/<path-to-sensitive-file>:ro
+- /dev/null:/workspaces/<project-name>/<path-to-sensitive-file>:ro
 ```
 
 Example for a database config:
 
 ```yaml
-- /dev/null:/workspaces/<project-folder>/config/database.yml:ro
+- /dev/null:/workspaces/<project-name>/config/database.yml:ro
 ```

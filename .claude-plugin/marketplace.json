@@ -5,7 +5,7 @@
     "repo": "mithredate/claude-codex"
   },
   "description": "Opinionated claude automation tools",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "owner": {
     "name": "Mehrdad Hedayati",
     "email": "mehrdad.headyati@gmail.com"

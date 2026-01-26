@@ -56,11 +56,18 @@ services:
     environment:
       DOCKER_HOST: tcp://socket-proxy:2375
       BRIDGE_ENABLED: "1"
-      # Optional: Override config directory location
-      # SIDECAR_CONFIG_DIR: /workspaces/myproject/.sidecar
+      # Optional: Match host user for file ownership (default: 1000)
+      # PUID: ${PUID:-1000}
+      # PGID: ${PGID:-1000}
+      # Optional: Anthropic API key (if not set, prompts for auth on first run)
+      # ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      # Optional: Override config directory (default: working_dir/.sidecar)
+      # SIDECAR_CONFIG_DIR: /workspaces/<project-name>/.sidecar
     volumes:
+      # Mount project - path must match working_dir below
       - .:/workspaces/<project-name>
       - claude-config:/home/claude/.claude
+      - claude-home:/home/claude/
       # Optional: shadow credentials (see Step 5)
       # - /dev/null:/workspaces/<project-name>/.env:ro
       # Optional: mount Claude credentials (see Step 6)
@@ -69,6 +76,7 @@ services:
 
 volumes:
   claude-config:
+  claude-home:
 ```
 
 Replace `<project-name>` with the actual project directory name.
@@ -90,19 +98,14 @@ commands:
     container: <container-key>
     exec: <executable>
     workdir: <container-workdir>
+    # Path mapping: Claude's path -> container's path
     paths:
       /workspaces/<project-name>: <container-workdir>
 ```
 
-Map commands based on detected tech stack:
+**Path mapping** is needed when Claude's workspace path differs from the container's working directory. The bridge automatically translates file paths in command arguments.
 
-- **PHP**: `php`, `composer`
-- **Node**: `node`, `npm`, `npx`, `yarn`, `pnpm`
-- **Python**: `python`, `pip`, `pytest`, `poetry`
-- **Go**: `go`, `gofmt`
-- **Ruby**: `ruby`, `bundle`, `rails`, `rake`
-
-Note: Commands like `artisan`, `phpunit`, `phpstan` are invoked via `php` and get intercepted automatically.
+Map the primary runtime commands for the detected tech stack (e.g., `php`, `composer` for PHP; `node`, `npm` for Node). Commands invoked via the runtime (like `artisan` via `php`) get intercepted automatically.
 
 ### Container Name Resolution
 
@@ -177,9 +180,9 @@ See [references/credential-shadowing.md](references/credential-shadowing.md) for
 
 ## Step 6: Mount Claude Credentials (Optional)
 
-Credentials persist in the `claude-config` Docker volume. On first run, Claude prompts for authentication.
+Credentials persist in the `claude-config` Docker volume. On first run, Claude prompts for authentication via browser. This is the recommended approach for most users.
 
-For MCP SSO support, extract and mount host credentials:
+For MCP SSO support or to skip the browser authentication flow, extract and mount host credentials:
 
 **macOS:**
 

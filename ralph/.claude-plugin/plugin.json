@@ -1,0 +1,8 @@
+{
+  "name": "ralph",
+  "version": "0.1.0",
+  "description": "PRD-driven autonomous development workflow. Generate PRDs, convert them to Ralph Loop JSON format, and execute user stories autonomously.",
+  "author": {
+    "name": "mithredate"
+  }
+}

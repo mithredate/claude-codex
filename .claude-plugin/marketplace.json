@@ -19,6 +19,15 @@
         "./skills/claude-sidecar-installer",
         "./skills/claude-md-helper"
       ]
+    },
+    {
+      "name": "ralph",
+      "source": "./ralph",
+      "description": "PRD-driven autonomous development workflow",
+      "skills": [
+        "./skills/prd",
+        "./skills/ralph"
+      ]
     }
   ]
 }

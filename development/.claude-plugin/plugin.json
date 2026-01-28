@@ -1,0 +1,9 @@
+{
+  "name": "development",
+  "version": "0.0.4",
+  "description": "Collection of development-specific tools including Claude.md helper and Claude Sidecar installer.",
+  "author": {
+    "name": "Mehrdad Hedayati",
+    "email": "mehrdad.headyati@gmail.com"
+  }
+}

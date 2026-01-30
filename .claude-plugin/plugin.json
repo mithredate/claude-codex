@@ -1,7 +1,7 @@
 {
   "name": "claude-codex",
   "description": "Opinionated Claude skills and tools",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "author": {
     "name": "Mehrdad Hedayati",
     "email": "mehrdad.hedayati@gmail.com"

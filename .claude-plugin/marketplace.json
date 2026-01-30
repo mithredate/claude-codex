@@ -5,7 +5,7 @@
     "repo": "mithredate/claude-codex"
   },
   "description": "Opinionated claude automation tools",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "owner": {
     "name": "Mehrdad Hedayati",
     "email": "mehrdad.hedayati@gmail.com"
@@ -23,11 +23,12 @@
     {
       "name": "ralph",
       "source": "./ralph",
-      "description": "PRD-driven autonomous development workflow",
+      "description": "PRD-driven autonomous development workflow with context handoff for long sessions",
       "skills": [
         "./skills/prd",
         "./skills/ralph"
-      ]
+      ],
+      "hooks": "./hooks/hooks.json"
     }
   ]
 }

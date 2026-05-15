@@ -1,6 +1,6 @@
 ---
 description: Help write, improve, or review CLAUDE.md files for Claude Code projects
-argument-hint: "create", "review", or "improve"
+argument-hint: create | review | improve
 allowed-tools: ["Read", "Write", "Glob", "Grep", "AskUserQuestion", "Skill"]
 ---
 

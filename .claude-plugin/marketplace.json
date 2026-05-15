@@ -1,9 +1,5 @@
 {
   "name": "skills",
-  "source": {
-    "source": "github",
-    "repo": "mithredate/skills"
-  },
   "description": "Opinionated, curated Claude Code skills",
   "version": "0.1.0",
   "owner": {

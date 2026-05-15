@@ -14,7 +14,8 @@
       "skills": [
         "./skills/install-claude-sidecar",
         "./skills/manage-claude-md",
-        "./skills/tdd"
+        "./skills/tdd",
+        "./skills/systematic-debugging"
       ]
     },
     {

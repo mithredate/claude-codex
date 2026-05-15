@@ -61,7 +61,19 @@ If `incoming-sha` was provided:
 
 If `incoming-sha` was not provided (merging two local skills), leave the footer alone.
 
-### 7. Report
+### 7. Validate
+
+Run the official validator against the plugin that owns `current` to confirm post-merge integrity:
+
+```bash
+claude plugin validate <plugin-dir-containing-current>
+```
+
+(e.g., if `current` is `productivity/skills/tdd/`, the plugin dir is `productivity`.)
+
+On any validation error, surface the message and stop — do not declare merge successful. The user resolves before committing.
+
+### 8. Report
 
 Print:
 - Items accepted / skipped / adapted (count + brief titles)

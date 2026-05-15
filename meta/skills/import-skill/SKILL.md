@@ -83,7 +83,17 @@ node meta/skills/import-skill/scripts/import.mjs \
 
 Surface and stop on any non-zero exit.
 
-### 8. Report (fresh import path)
+### 8. Validate (fresh import path)
+
+Run the official validator against the target plugin to confirm the freshly imported skill is well-formed:
+
+```bash
+claude plugin validate <target_plugin>
+```
+
+On any validation error, surface the message and stop — do not declare the import successful. The user resolves the issue (typically a footer or frontmatter problem in the upstream copy) before committing.
+
+### 9. Report (fresh import path)
 
 Show files created, files modified, and a suggested commit message:
 
@@ -93,7 +103,7 @@ vendor: import productivity/grill-me from mattpocock-skills
 
 Leave the actual `git add` / `git commit` to the user.
 
-### 9. Merge path: delegate to merge-skill
+### 10. Merge path: delegate to merge-skill
 
 When the user chose **merge** in Step 4:
 

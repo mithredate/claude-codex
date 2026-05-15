@@ -1,11 +1,11 @@
 {
-  "name": "claude-codex",
+  "name": "skills",
   "source": {
     "source": "github",
-    "repo": "mithredate/claude-codex"
+    "repo": "mithredate/skills"
   },
-  "description": "Opinionated claude automation tools",
-  "version": "0.0.5",
+  "description": "Opinionated, curated Claude Code skills",
+  "version": "0.1.0",
   "owner": {
     "name": "Mehrdad Hedayati",
     "email": "mehrdad.hedayati@gmail.com"

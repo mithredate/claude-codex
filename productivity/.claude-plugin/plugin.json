@@ -1,7 +1,7 @@
 {
-  "name": "skills",
-  "description": "Opinionated, curated Claude Code skills",
+  "name": "productivity",
   "version": "0.1.0",
+  "description": "Process and workflow skills (planning, debugging, TDD, grilling, etc.).",
   "author": {
     "name": "Mehrdad Hedayati",
     "email": "mehrdad.hedayati@gmail.com"

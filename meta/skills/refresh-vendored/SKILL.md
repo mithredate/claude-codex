@@ -1,164 +1,116 @@
 ---
 name: refresh-vendored
-description: Refresh vendored skills against their upstream sources. Use when the user wants to check if upstream repositories have new commits since the fork point, decide whether to incorporate them, and update attribution wording as local drift grows. Triggers on requests like "refresh vendored skills", "check upstream changes", "update from mattpocock", "see what's new upstream", or invocations of `/refresh-vendored`.
+description: Refresh vendored skills against their upstream sources. For each vendored skill, fetches the current upstream version and delegates the reconciliation to `merge-skill`. Use when the user wants to check what's changed upstream, decide what to incorporate into local versions, and let the attribution verb shift as drift grows. Triggers on requests like "refresh vendored skills", "check upstream changes", "update from mattpocock", "see what's new upstream", or invocations of `/refresh-vendored`.
 ---
 
 # Refresh Vendored Skills
 
-Check vendored skills against their upstream sources. Surface upstream changes since the fork point. Help the user decide what to incorporate. Adjust attribution wording when local drift grows.
+Survey vendored skills, fetch each upstream's current state, hand off to `merge-skill` for the per-skill reconciliation. On-demand only — never scheduled.
 
-## When to use
-
-Invoke when the user asks to check upstream updates, refresh vendored skills, or reconcile drift. On-demand only — this skill is never scheduled.
+Footer format reference: [`../import-skill/references/footer-format.md`](../import-skill/references/footer-format.md). The SHA in the footer is a **last-reviewed checkpoint**, not the original fork commit — it advances after every successful refresh whether the user adopted or skipped the changes.
 
 ## Prerequisites
 
 - `git` and `gh` CLIs available
 - Network access to GitHub
-- At least one vendored skill in the repo (SKILL.md with a footer link pointing to a commit URL)
-
-## Footer format the skill parses
-
-Every vendored skill carries a one-line attribution footer at the bottom of its `SKILL.md`. The canonical spec — including the verb-to-drift-band mapping and the parsing regex — lives in [`../import-skill/references/footer-format.md`](../import-skill/references/footer-format.md). Both this skill and `import-skill` depend on that single source.
-
-Briefly: the leading verb (`Adapted from` / `Inspired by` / `Originally seeded from`) encodes the current drift band, and the URL embeds `/tree/<sha>/<path>` where `<sha>` is the fork commit — the anchor for all upstream comparisons here.
+- At least one vendored skill (SKILL.md with a footer matching the canonical format)
 
 ## Process
 
-Create a TodoWrite item per step below when invoked.
+Create a TodoWrite item per step when invoked.
 
 ### 1. Discover vendored skills
 
 ```bash
-git grep -nE '^_(Adapted from|Inspired by|Originally seeded from) \[' -- '**/SKILL.md'
+git grep -nE '^_(Adapted from|Inspired by|Originally seeded from) \[' -- '**/SKILL.md' \
+  | grep -v '^deprecated/'
 ```
 
-For each hit, extract:
-- Local file path
-- Upstream `owner/repo`, fork SHA, upstream skill path (parse from the `tree/<sha>/<path>` URL)
+Note: `deprecated/skills/**` is **excluded** from refresh. Skills you've stopped using don't need reconciliation.
+
+For each match, parse the footer to extract:
+- Local skill directory path
+- Upstream `owner/repo`, last-reviewed SHA, upstream skill path (from the `tree/<sha>/<path>` URL)
 - Current footer verb
 
-If a footer is malformed or missing the `/tree/<sha>/` component, flag it and skip — the user must fix it manually before refresh can compare anything.
+If a footer is malformed or missing the `/tree/<sha>/` component, flag and skip — user must fix manually.
 
 Report the discovered list before proceeding.
 
 ### 2. Fetch upstream
 
-For each unique upstream `owner/repo`, clone shallowly into a temp dir:
+Group skills by upstream `owner/repo`. For each unique upstream, clone once into a temp dir:
 
 ```bash
 tmp=$(mktemp -d)
 gh repo clone <owner>/<repo> "$tmp/<repo>" -- --depth=50
 ```
 
-If the fork SHA isn't in the shallow history, deepen:
+If the last-reviewed SHA isn't in the shallow history, deepen incrementally (`fetch --deepen=200`, cap ~1000) until it resolves or give up and flag.
+
+### 3. Handle upstream restructure / deletion
+
+For each skill, verify the upstream path still exists at HEAD:
 
 ```bash
-git -C "$tmp/<repo>" fetch --deepen=200 origin
+git -C "$tmp/<repo>" cat-file -e HEAD:<upstream_path>/SKILL.md
 ```
 
-Keep deepening (cap ~1000) until the fork SHA resolves or give up and flag.
-
-### 3. Compute γ (upstream changes since fork)
-
-For each vendored skill:
+If it doesn't:
 
 ```bash
-git -C "$tmp/<repo>" diff --stat <fork_sha>..HEAD -- <upstream_path>
+git -C "$tmp/<repo>" log --follow --diff-filter=R --oneline -- <upstream_path>/SKILL.md
 ```
 
-Two outcomes:
-- Empty diff → upstream unchanged at this path. Mark "up-to-date".
-- Non-empty → mark as a γ candidate for review.
+- **Rename candidates found** — surface the most plausible (`looks like this moved to <new-path> in commit <sha>; confirm?`). On user confirmation, retarget the upstream path for the rest of the refresh and update the footer URL when merge-skill rewrites it.
+- **No candidates (likely deleted upstream)** — offer the user two outcomes:
+  - **Keep local as fully forked** — recompute drift band, soften verb (probably `Originally seeded from`), preserve the link to the upstream's last existing commit.
+  - **Delete local** — `git rm -r` the local skill, remove from `marketplace.json`, remove from `NOTICES.md`.
 
-### 4. Compute β (local drift since fork)
+### 4. Delegate reconciliation to merge-skill
 
-For each vendored skill:
+For each vendored skill (whose upstream path is resolved or retargeted), invoke `merge-skill` with:
 
-```bash
-git -C "$tmp/<repo>" show <fork_sha>:<upstream_path>/SKILL.md > "$tmp/original.md"
-git diff --no-index --shortstat "$tmp/original.md" <local_skill_md>
-```
+- **current** = the local skill directory (e.g., `productivity/tdd/`)
+- **incoming** = `<tmp>/<repo>/<upstream_path>/` (upstream at HEAD)
+- **incoming-sha** = the upstream HEAD SHA
 
-Drift ratio = `(insertions + deletions) / original_line_count`.
+`merge-skill` owns the actual comparison, three-flag annotation (`upstream-new`, `conflict`, `stale-divergence`), per-item decision loop, and footer rewrite. This skill is thin around that handoff.
 
-Bucket:
-- `< 30%`  → low → footer verb should be **"Adapted from"**
-- `30–80%` → medium → **"Inspired by"**
-- `> 80%`  → high → **"Originally seeded from"**
+If `merge-skill` reports "no changes," skip with a one-line note in the final summary.
 
-If a skill has sub-files (`references/`, `scripts/`, etc.), include them in the line counts. The drift band reflects the whole skill, not just `SKILL.md`.
+### 5. NOTICES.md sync
 
-### 5. Survey summary
+After all skills are processed:
+- If an upstream entry exists in `NOTICES.md` but no skill in the repo references it anymore (e.g., a skill was deleted in step 3), remove that entry.
+- If a vendored skill changed upstream owner/repo via rename detection (rare — unrelated to path rename within the same repo), update the entry.
 
-Present a table:
+Propose edits; don't apply automatically.
 
-```
-Skill                          | γ (upstream) | β (your drift) | Current verb        | Suggested verb
--------------------------------|--------------|----------------|---------------------|--------------------
-productivity/grill-me          | 3 commits    | 12% (low)      | Adapted from        | (unchanged)
-productivity/tdd               | none         | 45% (medium)   | Adapted from        | Inspired by
-in-progress/foo                | 2 commits    | 85% (high)     | Adapted from        | Originally seeded from
-```
+### 6. Report and commit guidance
 
-Highlight:
-- **γ updates** → candidates for review (Step 6)
-- **Verb mismatch** between current and suggested → attribution language is stale (Step 7)
+Print:
+- Per-skill: adopted/skipped/adapted counts, footer changes (SHA bump and/or verb change)
+- Files modified
+- A suggested commit message, e.g.:
+  ```
+  refresh: pull updates from mattpocock-skills
 
-Ask the user where to start. Default order: γ candidates first (substantive), then verb fixes (cosmetic).
-
-### 6. Interactive review per γ candidate
-
-For each γ candidate:
-
-1. Run `git -C "$tmp/<repo>" log --oneline <fork_sha>..HEAD -- <upstream_path>` and summarize commit messages.
-2. Run `git -C "$tmp/<repo>" diff <fork_sha>..HEAD -- <upstream_path>` and walk the hunks with the user.
-3. For each meaningful upstream change, ask: **adopt, skip, or adapt?**
-   - **Adopt** — patch the local file with the upstream change.
-   - **Skip** — note the deliberate divergence; do nothing.
-   - **Adapt** — let the user dictate the local version inline.
-4. After all hunks are processed, update the fork SHA in the footer to the new upstream HEAD SHA so the next refresh diff is bounded.
-
-Never silently overwrite. Every patch goes through user confirmation.
-
-### 7. License language check (β)
-
-For each skill where current verb ≠ suggested verb (per Step 4 bucket):
-
-1. Show the current footer line.
-2. Show the proposed new footer line — same URL, same copyright, only the verb changes.
-3. Ask the user to confirm or override.
-4. **Always preserve the upstream link** even at >80% drift. The link is the MIT-compliance anchor and honest lineage.
-
-The skill suggests; the user decides.
-
-### 8. NOTICES.md sync
-
-After processing, check whether any upstream entry in `NOTICES.md` needs updating (new upstream introduced, or a previously-vendored upstream now has zero vendored skills). Propose edits; don't apply automatically.
-
-### 9. Commit guidance
-
-Print a suggested commit message summarizing the run, e.g.:
-
-```
-refresh: pull updates from mattpocock-skills
-
-- productivity/grill-me: adopt 2 upstream commits, bump fork SHA
-- productivity/tdd: re-band to "Inspired by" (45% drift)
-```
+  - productivity/grill-me: 2 items adopted, SHA bump
+  - productivity/tdd: 1 item adopted; verb re-banded to "Inspired by" (52% drift)
+  ```
 
 Leave the actual `git add` / `git commit` to the user.
 
 ## Output discipline
 
-- Terse summary tables; raw diff output when reviewing hunks.
-- Cite SHA-precise upstream links in every claim ("upstream commit `abc1234` changed …").
-- Never auto-commit. Never silently rewrite a SKILL.md.
+- Cite SHA-precise upstream links in every claim.
+- Never auto-commit, never silently rewrite a SKILL.md.
+- Per-skill review is **semantic, not mechanical** — that work lives in `merge-skill`.
 
 ## Edge cases
 
-- **Footer missing or malformed** → flag and skip; user must fix manually.
-- **Fork SHA can't be resolved even after deepening** → flag, propose using the merge-base of `main` and the closest annotated tag as a fallback anchor.
-- **Upstream repo renamed/deleted** → flag, ask the user to update the URL.
-- **Local skill rewritten from blank page (no inherited content)** → β shortstat will dominate; band is "high", verb becomes "Originally seeded from". If the user objects ("there's nothing of theirs left"), tell them to drop the footer manually — the skill won't propose dropping the link.
-- **Multiple vendored skills from the same upstream** → clone once, reuse the temp dir for all of them.
+- **Footer missing or malformed** → flag, skip, ask user to fix manually.
+- **Last-reviewed SHA can't be resolved even after deepening to depth 1000** → flag; propose using the upstream's earliest available commit as a fallback (any further refresh comparisons will overreport changes once, then normalize).
+- **`merge-skill` aborts mid-skill** (e.g., a patch failed to apply cleanly) → surface the partial state, skip remaining skills until the user resolves, don't continue blindly.
+- **Multiple vendored skills from the same upstream** → clone once in step 2; reuse the temp dir.

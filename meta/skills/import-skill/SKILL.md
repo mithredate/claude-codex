@@ -83,17 +83,32 @@ node meta/skills/import-skill/scripts/import.mjs \
 
 Surface and stop on any non-zero exit.
 
-### 8. Validate (fresh import path)
+### 8. Structural review (fresh import path)
 
-Run the official validator against the target plugin to confirm the freshly imported skill is well-formed:
+The script copies upstream files verbatim, preserving whatever layout the upstream author used. That keeps the post-import state an exact mirror of upstream (so any later edits are unambiguously *your* drift) but it may not match local conventions.
+
+Inspect the freshly imported skill directory. Surface structural mismatches to the user **as suggestions, one at a time**. Common cases:
+
+- **Doc-like files alongside `SKILL.md`** (e.g., `REFERENCE.md`, `EXAMPLES.md`, `FORMS.md`) → propose moving into `references/`. Local convention is doc files live in `references/`, not at skill root.
+- **Loose scripts at skill root** → propose moving into `scripts/`.
+- **Asset-like files** (`.png`, `.svg`, templates) → propose moving into `assets/`.
+- **`SKILL.md` body in unusual order** (e.g., missing the `## When to use` section common to local skills) → flag only; don't auto-rewrite content.
+
+For each suggestion: show the move/edit, ask **yes / skip**, apply only on yes. Never silently rewrite. After the review, if any moves were applied, update any in-`SKILL.md` references (e.g., `[REFERENCE.md](REFERENCE.md)` → `[references/REFERENCE.md](references/REFERENCE.md)`).
+
+If the user accepts no suggestions, the skill stays an exact upstream mirror — that's fine.
+
+### 9. Validate (fresh import path)
+
+Run the official validator against the target plugin to confirm the freshly imported (and possibly restructured) skill is well-formed:
 
 ```bash
 claude plugin validate <target_plugin>
 ```
 
-On any validation error, surface the message and stop — do not declare the import successful. The user resolves the issue (typically a footer or frontmatter problem in the upstream copy) before committing.
+On any validation error, surface the message and stop — do not declare the import successful. The user resolves the issue (typically a footer or frontmatter problem) before committing.
 
-### 9. Report (fresh import path)
+### 10. Report (fresh import path)
 
 Show files created, files modified, and a suggested commit message:
 
@@ -103,7 +118,7 @@ vendor: import productivity/grill-me from mattpocock-skills
 
 Leave the actual `git add` / `git commit` to the user.
 
-### 10. Merge path: delegate to merge-skill
+### 11. Merge path: delegate to merge-skill
 
 When the user chose **merge** in Step 4:
 

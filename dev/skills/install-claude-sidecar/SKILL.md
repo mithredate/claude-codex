@@ -1,5 +1,5 @@
 ---
-name: claude-sidecar-installer
+name: install-claude-sidecar
 description: "Set up Claude Sidecar integration in any Docker-based project. Use when: user asks to 'add claude container', 'setup claude-sidecar', 'integrate claude container', 'add claude to docker compose', 'containerize claude', 'run claude in docker', 'add claude sidecar', or wants Claude Code running as a container service with bridge command routing to project containers."
 ---
 

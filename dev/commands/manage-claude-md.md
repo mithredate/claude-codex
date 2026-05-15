@@ -8,6 +8,6 @@ allowed-tools: ["Read", "Write", "Glob", "Grep", "AskUserQuestion", "Skill"]
 
 Help the user create, review, or improve their CLAUDE.md file.
 
-**Load the claude-md-helper skill first** using the Skill tool, then follow its workflow exactly.
+**Load the manage-claude-md skill first** using the Skill tool, then follow its workflow exactly.
 
 **Initial request:** $ARGUMENTS

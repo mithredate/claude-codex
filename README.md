@@ -5,8 +5,8 @@ Opinionated, curated Claude Code skills — vendored from upstream sources (matt
 ## Plugins
 
 - **dev** — general development tooling
-  - `claude-md-helper` — author and review `CLAUDE.md` files
-  - `claude-sidecar-installer` — install the Claude sidecar viewer
+  - `manage-claude-md` — create, review, and improve `CLAUDE.md` files
+  - `install-claude-sidecar` — install the Claude sidecar viewer
 - **meta** — skills for maintaining this marketplace itself
   - `import-skill` — vendor a new skill from a GitHub upstream
   - `refresh-vendored` — reconcile vendored skills against upstream changes

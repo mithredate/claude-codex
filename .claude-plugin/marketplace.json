@@ -16,8 +16,8 @@
       "source": "./dev",
       "description": "General development tooling skills",
       "skills": [
-        "./skills/claude-sidecar-installer",
-        "./skills/claude-md-helper"
+        "./skills/install-claude-sidecar",
+        "./skills/manage-claude-md"
       ]
     },
     {

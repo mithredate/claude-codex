@@ -1,5 +1,5 @@
 ---
-name: claude-md-helper
+name: manage-claude-md
 description: Help write and improve CLAUDE.md files for Claude Code projects. Use when users want to create a new CLAUDE.md, improve an existing one, review their CLAUDE.md for best practices, or ask questions about what to include in CLAUDE.md. Triggers on requests like "help me write a CLAUDE.md", "review my CLAUDE.md", "what should I put in CLAUDE.md", or "improve my Claude configuration".
 ---
 

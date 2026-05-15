@@ -12,9 +12,9 @@
   },
   "plugins": [
     {
-      "name": "development",
-      "source": "./development",
-      "description": "Collection of development-specific tools",
+      "name": "dev",
+      "source": "./dev",
+      "description": "General development tooling skills",
       "skills": [
         "./skills/claude-sidecar-installer",
         "./skills/claude-md-helper"

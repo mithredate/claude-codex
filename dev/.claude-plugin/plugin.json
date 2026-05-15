@@ -1,0 +1,9 @@
+{
+  "name": "dev",
+  "version": "0.1.0",
+  "description": "General development tooling skills (CLAUDE.md helper, Claude sidecar installer).",
+  "author": {
+    "name": "Mehrdad Hedayati",
+    "email": "mehrdad.hedayati@gmail.com"
+  }
+}

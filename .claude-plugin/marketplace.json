@@ -22,7 +22,8 @@
       "source": "./productivity",
       "description": "Process and workflow skills (planning, debugging, grilling, etc.).",
       "skills": [
-        "./skills/grill-me"
+        "./skills/grill-me",
+        "./skills/write-a-skill"
       ]
     },
     {

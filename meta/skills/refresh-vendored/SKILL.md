@@ -67,7 +67,7 @@ git -C "$tmp/<repo>" log --follow --diff-filter=R --oneline -- <upstream_path>/S
 - **Rename candidates found** — surface the most plausible (`looks like this moved to <new-path> in commit <sha>; confirm?`). On user confirmation, retarget the upstream path for the rest of the refresh and update the footer URL when merge-skill rewrites it.
 - **No candidates (likely deleted upstream)** — offer the user two outcomes:
   - **Keep local as fully forked** — recompute drift band, soften verb (probably `Originally seeded from`), preserve the link to the upstream's last existing commit.
-  - **Delete local** — `git rm -r` the local skill, remove from `marketplace.json`, remove from `NOTICES.md`.
+  - **Delete local** — `git rm -r` the local skill, remove from `marketplace.json`, remove from `NOTICES.md`, and remove its bullet from the `## Plugins` section in `README.md` (restore the `_(empty for now)_` suffix on the plugin line if no skills remain).
 
 ### 4. Delegate reconciliation to merge-skill
 
@@ -81,11 +81,12 @@ For each vendored skill (whose upstream path is resolved or retargeted), invoke 
 
 If `merge-skill` reports "no changes," skip with a one-line note in the final summary.
 
-### 5. NOTICES.md sync
+### 5. NOTICES.md and README.md sync
 
 After all skills are processed:
 - If an upstream entry exists in `NOTICES.md` but no skill in the repo references it anymore (e.g., a skill was deleted in step 3), remove that entry.
 - If a vendored skill changed upstream owner/repo via rename detection (rare — unrelated to path rename within the same repo), update the entry.
+- Cross-check `README.md`'s `## Plugins` section against the actual skill set: every `<plugin>/skills/<name>/` directory should have a bullet under its plugin, and no stale bullets should remain. Restore the `_(empty for now)_` suffix on any plugin whose skills are all gone.
 
 Propose edits; don't apply automatically.
 

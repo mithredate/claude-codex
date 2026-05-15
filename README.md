@@ -7,11 +7,15 @@ Opinionated, curated Claude Code skills — vendored from upstream sources (matt
 - **dev** — general development tooling
   - `manage-claude-md` — create, review, and improve `CLAUDE.md` files
   - `install-claude-sidecar` — install the Claude sidecar viewer
+  - `tdd` — test-driven development with a red-green-refactor loop
+  - `systematic-debugging` — finding root cause before applying a fix
 - **meta** — skills for maintaining this marketplace itself
   - `import-skill` — vendor a new skill from a GitHub upstream
   - `refresh-vendored` — reconcile vendored skills against upstream changes
   - `merge-skill` — shared core that reconciles two skill versions into one (used by the above)
-- **productivity** — process and workflow skills _(empty for now)_
+- **productivity** — process and workflow skills
+  - `grill-me` — stress-test a plan or design by interrogation
+  - `write-a-skill` — author new skills with proper structure and progressive disclosure
 - **in-progress** — skills being actively authored or rewritten _(empty for now)_
 - **deprecated** — skills phased out, kept installable during transitions _(empty for now)_
 

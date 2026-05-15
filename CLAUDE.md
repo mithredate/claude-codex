@@ -35,6 +35,16 @@ Each top-level plugin dir has `.claude-plugin/plugin.json` and `skills/`. Each s
 - **Reconcile two skill versions** — invoke `/merge-skill`. Defined in `meta/skills/merge-skill/SKILL.md`. Used by both above; can also be invoked standalone.
 - **Author from scratch** — new SKILL.md goes under `in-progress/skills/<name>/`. Move to `dev/` or `productivity/` when it represents the current opinion. Lifecycle is one-way; no demotion.
 
+## Worktree workflow (imports and refreshes)
+
+Both `import-skill` and `refresh-vendored` operate in a **dedicated git worktree per session**, never on `main` directly. Use Claude Code's default worktree mechanism — it places worktrees under `.claude/worktrees/<branch-name>/` (which is gitignored).
+
+Per session:
+- Create a worktree on a feature branch — `import/<target-name>` for imports, `refresh/<date>` for refreshes.
+- Do all file edits in the worktree.
+- On successful validation: commit, push the branch, offer to open a PR via `gh pr create --fill`. CI on the feature branch is the actual gate.
+- On validation failure: leave the worktree dirty for inspection. Don't commit, don't push.
+
 ## Lifecycle
 
 - `in-progress/` — actively being shaped (vendored-and-drifting or authored-from-scratch).

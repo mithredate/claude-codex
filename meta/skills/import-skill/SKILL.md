@@ -11,6 +11,8 @@ Vendor a skill from a GitHub upstream. Interactive — gathers inputs, picks a t
 
 Pairs with [`refresh-vendored`](../refresh-vendored/SKILL.md). All three share the canonical footer format in [`references/footer-format.md`](references/footer-format.md).
 
+This skill runs in a **dedicated git worktree per session**, never on `main` directly. The worktree is created after Step 4 (target name resolved); all subsequent file edits happen in it. On success the skill commits and pushes the branch. On validation failure the worktree is left dirty for inspection. See CLAUDE.md § Worktree workflow for the mechanics.
+
 ## Process
 
 Create a TodoWrite item per step when invoked.

@@ -7,6 +7,8 @@ description: Refresh vendored skills against their upstream sources. For each ve
 
 Survey vendored skills, fetch each upstream's current state, hand off to `merge-skill` for the per-skill reconciliation. On-demand only — never scheduled.
 
+This skill runs in a **dedicated git worktree per session**, never on `main` directly. The worktree is created at the start of the run on a `refresh/<date>` branch; all subsequent file edits happen in it. On success the skill commits and pushes the branch. On validation failure the worktree is left dirty for inspection. See CLAUDE.md § Worktree workflow for the mechanics.
+
 Footer format reference: [`../import-skill/references/footer-format.md`](../import-skill/references/footer-format.md). The SHA in the footer is a **last-reviewed checkpoint**, not the original fork commit — it advances after every successful refresh whether the user adopted or skipped the changes.
 
 ## Prerequisites

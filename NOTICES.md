@@ -8,7 +8,7 @@ This repository vendors skills from other open-source projects. Originals retain
 - **Repository:** https://github.com/mattpocock/skills
 - **License:** MIT
 - **Copyright:** © 2026 Matt Pocock
-- **Vendored skills:** dev/tdd, productivity/grill-me
+- **Vendored skills:** dev/tdd, productivity/grill-me, productivity/write-a-skill
 
 <!--
 Format for each upstream:

@@ -1,13 +1,15 @@
 ---
 name: import-skill
-description: Import a skill from a GitHub upstream into this repo as a vendored fork. Clones the upstream, copies files into a target plugin (dev/productivity/in-progress/deprecated), writes the canonical attribution footer with the fork-commit SHA, updates marketplace.json, and appends to NOTICES.md. Use when the user wants to vendor a new skill from an external repo, pull in a skill from mattpocock-skills or superpowers or any other GitHub source, or invokes /import-skill.
+description: Import a skill from a GitHub upstream into this repo. Clones the upstream, picks a target plugin, and either does a fresh copy (when the target name is free) or delegates to `merge-skill` to reconcile into an existing local skill of the same concept. Never creates a parallel skill alongside an existing one — merge or abort. Use when the user wants to vendor a new skill from an external repo, pull in a skill from mattpocock-skills or superpowers or any other GitHub source, or invokes /import-skill.
 ---
 
 # Import Skill
 
-Vendor a skill from a GitHub upstream into this repo as a curated fork. Interactive — gathers inputs, previews the plan, then runs a deterministic Node script to perform the copy.
+Vendor a skill from a GitHub upstream. Interactive — gathers inputs, picks a target, and forks to one of two paths:
+- **Fresh import** (no concept conflict): copy files, write footer, register in `marketplace.json` and `NOTICES.md`.
+- **Conflict** (a local skill of the same concept already exists): delegate to [`merge-skill`](../merge-skill/SKILL.md) to reconcile incoming into the existing skill. **Never** creates a parallel skill.
 
-Pairs with [refresh-vendored](../refresh-vendored/SKILL.md). The two share a footer-format spec — see [`references/footer-format.md`](references/footer-format.md).
+Pairs with [`refresh-vendored`](../refresh-vendored/SKILL.md). All three share the canonical footer format in [`references/footer-format.md`](references/footer-format.md).
 
 ## Process
 
@@ -17,61 +19,56 @@ Create a TodoWrite item per step when invoked.
 
 Ask the user:
 1. **Upstream repo** in `<owner>/<repo>` form (e.g., `mattpocock/mattpocock-skills`).
-2. **Upstream path** within that repo to the skill directory (e.g., `skills/productivity/grill-me`).
+2. **Upstream path** within that repo (e.g., `skills/productivity/grill-me`).
 
-If the user is vague ("vendor grill-me from mattpocock"), help disambiguate by running `gh search code` or by cloning and `find … -name SKILL.md`.
+If the user is vague ("vendor grill-me from mattpocock"), help disambiguate by running `gh search code` or cloning and `find … -name SKILL.md`.
 
 ### 2. Verify the upstream path
-
-Clone the upstream shallowly into a temp dir:
 
 ```bash
 tmp=$(mktemp -d)
 gh repo clone <owner>/<repo> "$tmp/<repo>" -- --depth=1
 ```
 
-Confirm `<tmp>/<repo>/<upstream_path>/SKILL.md` exists. If not, error and re-prompt for the path.
+Confirm `<tmp>/<repo>/<upstream_path>/SKILL.md` exists. If not, error and re-prompt.
 
 ### 3. Pick target plugin
 
-Show the four candidate plugins (`dev`, `productivity`, `in-progress`, `deprecated`) with one-line descriptions and the count of existing skills in each. Ask which one. Recommend based on the skill's nature: process-flavored → `productivity`; tooling → `dev`; uncertain or being-drifted → `in-progress`.
+Show the user the registered plugins (`dev`, `productivity`, `meta`, plus any others) with one-line descriptions and the count of existing skills in each. Ask which one. Recommend based on the skill's nature: process-flavored → `productivity`; tooling → `dev`; repo-self-maintenance → `meta`; uncertain or actively-being-drifted → `in-progress`.
 
-### 4. Recommend a target name (always — not only on conflict)
+`deprecated` is not a valid import target.
 
-1. List existing skill directory names in `<target_plugin>/skills/`.
-2. Identify the local naming convention (verb-first hyphenated? noun-only?).
-3. Default to the upstream skill's directory name.
-4. If that name conflicts, propose a renamed variant (e.g., `<name>-<upstream-owner>`).
-5. If no conflict but the name doesn't match local convention, propose an adjusted variant.
-6. Present the recommendation; let the user confirm or override.
+### 4. Resolve target name — fresh import or merge?
 
-Never silently overwrite. If the user insists on overwriting, refuse and instruct them to delete the existing skill manually first.
+Default to the upstream skill's directory name (e.g., `grill-me`). The naming rule is **verb-first hyphenated**; never try to "improve" the upstream name linguistically — the user overrides if they want.
 
-### 5. Capture upstream metadata
+Check `<target_plugin>/skills/<name>/`:
+- **No conflict** → proceed to **Fresh import** path (Steps 5–8).
+- **Conflict** (a skill of that name already exists, possibly itself vendored from a different upstream) → ask the user: **merge** into the existing skill, or **abort** the import. Renamed parallel variants are **not** offered — the duplicate-skills policy forbids running two forks of the same concept side by side.
+  - If **merge** → proceed to **Merge path** (Step 9).
+  - If **abort** → stop with no changes.
+
+### 5. Capture upstream metadata (fresh import path)
 
 ```bash
-git -C "$tmp/<repo>" rev-parse HEAD                # fork SHA
+git -C "$tmp/<repo>" rev-parse HEAD                # checkpoint SHA
 head -20 "$tmp/<repo>/LICENSE"                     # license + copyright
 ```
 
-Parse:
-- **License** (e.g., `MIT`, `Apache-2.0`).
-- **Copyright holder + year** (e.g., `© 2026 Matt Pocock`).
+Parse the **license** (e.g., `MIT`, `Apache-2.0`) and **copyright** (e.g., `© 2026 Matt Pocock`). If no `LICENSE` at upstream root, prompt the user.
 
-If no `LICENSE` at upstream repo root, prompt the user for the values manually.
+### 6. Preview the plan (fresh import path)
 
-### 6. Preview the plan
-
-Show the user:
+Show:
 - Source files to copy
 - Target directory (`<target_plugin>/skills/<target_name>/`)
-- Full footer text to be appended to `SKILL.md` (see [`references/footer-format.md`](references/footer-format.md))
+- Footer text to be appended to `SKILL.md` (per [`references/footer-format.md`](references/footer-format.md))
 - `marketplace.json` entry to insert
 - `NOTICES.md` block to add or update
 
-Wait for explicit confirmation before proceeding.
+Wait for explicit confirmation.
 
-### 7. Run the import script
+### 7. Run the import script (fresh import path)
 
 ```bash
 node meta/skills/import-skill/scripts/import.mjs \
@@ -84,9 +81,9 @@ node meta/skills/import-skill/scripts/import.mjs \
   --target-name <target_name>
 ```
 
-The script handles file copy, footer write, `marketplace.json` edit, and `NOTICES.md` update deterministically. On non-zero exit, surface the error and stop.
+Surface and stop on any non-zero exit.
 
-### 8. Report and suggest commit
+### 8. Report (fresh import path)
 
 Show files created, files modified, and a suggested commit message:
 
@@ -96,10 +93,29 @@ vendor: import productivity/grill-me from mattpocock-skills
 
 Leave the actual `git add` / `git commit` to the user.
 
+### 9. Merge path: delegate to merge-skill
+
+When the user chose **merge** in Step 4:
+
+1. Resolve upstream SHA: `git -C "$tmp/<repo>" rev-parse HEAD`.
+2. Invoke [`merge-skill`](../merge-skill/SKILL.md) with:
+   - **current** = the existing local skill directory (`<target_plugin>/skills/<target_name>/`)
+   - **incoming** = `<tmp>/<repo>/<upstream_path>/`
+   - **incoming-sha** = the upstream HEAD SHA captured above
+3. `merge-skill` handles the comparison, decision loop, file edits, and footer rewrite. This skill is done — surface its output verbatim.
+4. If the existing local skill has its own footer pointing to a *different* upstream than the one being merged in, flag this as ambiguous and ask the user how to record provenance after the merge (typically: keep the existing footer's upstream as primary; mention the merged-in source in `NOTICES.md` as an additional contributor).
+
+After merge-skill returns, suggest a commit message like:
+
+```
+merge: absorb superpowers/tdd into productivity/tdd
+```
+
 ## Edge cases
 
 - **Upstream private or gated** — `gh repo clone` prompts for auth; surface errors.
 - **No `LICENSE` at upstream root** — prompt user for license + copyright manually.
-- **Target plugin not registered in `marketplace.json`** — script fails; instruct user to register first.
-- **Upstream directory contains nested skill dirs** — only the top-level SKILL.md and its sibling files (`references/`, `scripts/`, etc.) are copied. Nested skills are not recursed into.
+- **Target plugin not registered in `marketplace.json`** — fail; instruct user to register first.
+- **Upstream directory contains nested skill dirs** — only the top-level SKILL.md and its sibling files (`references/`, `scripts/`, etc.) are copied (fresh import) or compared (merge). Nested skills are not recursed into.
 - **Upstream skill has no `SKILL.md`** — verify in Step 2; refuse to proceed.
+- **Merge path with a non-vendored local skill** (the existing skill is fully authored by the user, no footer) — proceed with merge anyway; the footer is *added* during merge-skill's Step 6 since `incoming-sha` is provided.

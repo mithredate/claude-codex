@@ -25,7 +25,8 @@
       "source": "./in-progress",
       "description": "Skills being actively authored or rewritten. Expect rough edges.",
       "skills": [
-        "./skills/refresh-vendored"
+        "./skills/refresh-vendored",
+        "./skills/import-skill"
       ]
     }
   ]

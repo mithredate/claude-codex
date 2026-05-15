@@ -1,13 +1,17 @@
 # Skills
 
-Opinionated, curated Claude Code skills.
+Opinionated, curated Claude Code skills — vendored from upstream sources (mattpocock-skills, superpowers, etc.) and drifted toward a personal style.
 
 ## Plugins
 
 - **dev** — general development tooling
+  - `claude-md-helper` — author and review `CLAUDE.md` files
+  - `claude-sidecar-installer` — install the Claude sidecar viewer
 - **productivity** — process and workflow skills _(empty for now)_
 - **in-progress** — skills being actively authored or rewritten
-- **deprecated** — skills phased out, kept installable during transitions
+  - `import-skill` — vendor a new skill from a GitHub upstream
+  - `refresh-vendored` — reconcile vendored skills against upstream changes
+- **deprecated** — skills phased out, kept installable during transitions _(empty for now)_
 
 ## Installation
 
@@ -15,6 +19,13 @@ Opinionated, curated Claude Code skills.
 2. `/plugin marketplace add mithredate/skills`
 3. `/plugin install <plugin-name>@skills`
 
+## Vendoring and maintenance
+
+Most skills here are forks of upstream open-source work. Lifecycle:
+
+- **Add a new vendored skill** — invoke `/import-skill`. Interactive: gathers upstream coords, clones, copies files into a target plugin, writes the canonical attribution footer with the fork-commit SHA, and updates `marketplace.json` and `NOTICES.md`.
+- **Refresh existing vendored skills** — invoke `/refresh-vendored`. Surfaces upstream changes since the fork commit, lets you adopt or skip each change, and adjusts the attribution verb if local drift has shifted bands (`Adapted from` → `Inspired by` → `Originally seeded from`).
+
 ## Attribution
 
-Vendored skills carry per-file source attribution at the bottom of each `SKILL.md`. See [`NOTICES.md`](NOTICES.md) for the repo-level summary.
+Each vendored `SKILL.md` carries a one-line footer at the bottom with the source URL (including the fork-commit SHA) and license. The repo-level summary lives in [`NOTICES.md`](NOTICES.md). Canonical footer format: [`in-progress/skills/import-skill/references/footer-format.md`](in-progress/skills/import-skill/references/footer-format.md).

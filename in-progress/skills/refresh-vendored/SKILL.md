@@ -19,15 +19,9 @@ Invoke when the user asks to check upstream updates, refresh vendored skills, or
 
 ## Footer format the skill parses
 
-Every vendored skill carries one of these one-line footers at the bottom of its `SKILL.md`:
+Every vendored skill carries a one-line attribution footer at the bottom of its `SKILL.md`. The canonical spec — including the verb-to-drift-band mapping and the parsing regex — lives in [`../import-skill/references/footer-format.md`](../import-skill/references/footer-format.md). Both this skill and `import-skill` depend on that single source.
 
-```
-_Adapted from [<upstream-name>/<skill-path>](<url>/tree/<sha>/<path>) — <license> © <year> <holder>._
-_Inspired by [<upstream-name>/<skill-path>](<url>/tree/<sha>/<path>) — ..._
-_Originally seeded from [<upstream-name>/<skill-path>](<url>/tree/<sha>/<path>) — ..._
-```
-
-The verb encodes the current drift band. The SHA inside `/tree/<sha>/` is the **fork commit** and the anchor for all upstream comparisons.
+Briefly: the leading verb (`Adapted from` / `Inspired by` / `Originally seeded from`) encodes the current drift band, and the URL embeds `/tree/<sha>/<path>` where `<sha>` is the fork commit — the anchor for all upstream comparisons here.
 
 ## Process
 

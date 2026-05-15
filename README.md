@@ -7,10 +7,11 @@ Opinionated, curated Claude Code skills — vendored from upstream sources (matt
 - **dev** — general development tooling
   - `claude-md-helper` — author and review `CLAUDE.md` files
   - `claude-sidecar-installer` — install the Claude sidecar viewer
-- **productivity** — process and workflow skills _(empty for now)_
-- **in-progress** — skills being actively authored or rewritten
+- **meta** — skills for maintaining this marketplace itself
   - `import-skill` — vendor a new skill from a GitHub upstream
   - `refresh-vendored` — reconcile vendored skills against upstream changes
+- **productivity** — process and workflow skills _(empty for now)_
+- **in-progress** — skills being actively authored or rewritten _(empty for now)_
 - **deprecated** — skills phased out, kept installable during transitions _(empty for now)_
 
 ## Installation
@@ -28,4 +29,4 @@ Most skills here are forks of upstream open-source work. Lifecycle:
 
 ## Attribution
 
-Each vendored `SKILL.md` carries a one-line footer at the bottom with the source URL (including the fork-commit SHA) and license. The repo-level summary lives in [`NOTICES.md`](NOTICES.md). Canonical footer format: [`in-progress/skills/import-skill/references/footer-format.md`](in-progress/skills/import-skill/references/footer-format.md).
+Each vendored `SKILL.md` carries a one-line footer at the bottom with the source URL (including the fork-commit SHA) and license. The repo-level summary lives in [`NOTICES.md`](NOTICES.md). Canonical footer format: [`meta/skills/import-skill/references/footer-format.md`](meta/skills/import-skill/references/footer-format.md).

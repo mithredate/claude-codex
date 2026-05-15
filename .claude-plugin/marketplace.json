@@ -21,9 +21,9 @@
       ]
     },
     {
-      "name": "in-progress",
-      "source": "./in-progress",
-      "description": "Skills being actively authored or rewritten. Expect rough edges.",
+      "name": "meta",
+      "source": "./meta",
+      "description": "Skills for maintaining this marketplace itself (import, refresh). Not useful in other repos.",
       "skills": [
         "./skills/refresh-vendored",
         "./skills/import-skill"

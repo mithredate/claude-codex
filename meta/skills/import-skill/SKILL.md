@@ -74,7 +74,7 @@ Wait for explicit confirmation before proceeding.
 ### 7. Run the import script
 
 ```bash
-node in-progress/skills/import-skill/scripts/import.mjs \
+node meta/skills/import-skill/scripts/import.mjs \
   --upstream <owner>/<repo> \
   --upstream-path <upstream_path> \
   --upstream-sha <sha> \

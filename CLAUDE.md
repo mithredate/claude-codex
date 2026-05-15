@@ -18,7 +18,7 @@ A Claude Code marketplace repo: opinionated forks of upstream skills (mattpocock
 └── README.md
 ```
 
-Each top-level plugin dir has `.claude-plugin/plugin.json`, `commands/` (optional), and `skills/`. Each skill is a dir with `SKILL.md` plus optional `references/` and `scripts/`.
+Each top-level plugin dir has `.claude-plugin/plugin.json` and `skills/`. Each skill is a dir with `SKILL.md` plus optional `references/` and `scripts/`. Slash commands (`commands/*.md`) are the legacy Claude Code mechanism and intentionally not used here — skills replace them.
 
 ## Conventions
 
@@ -26,7 +26,6 @@ Each top-level plugin dir has `.claude-plugin/plugin.json`, `commands/` (optiona
 - **Vendored skills carry a footer** at the bottom of `SKILL.md` linking to the upstream commit. Canonical format: `meta/skills/import-skill/references/footer-format.md`. The link is always preserved (MIT-compliance anchor) even when the skill has fully drifted.
 - **The SHA in the footer is a last-reviewed checkpoint**, not the original fork point. Advances every refresh.
 - **No parallel skills.** When concepts conflict, merge or abort — never run two forks of the same idea side by side.
-- **`commands/*.md` wrappers** only when the skill takes arguments or has verb modes; verb-free skills don't get one.
 
 ## Workflows
 

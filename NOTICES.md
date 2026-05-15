@@ -4,7 +4,11 @@ This repository vendors skills from other open-source projects. Originals retain
 
 ## Upstream sources
 
-_None yet — populated as skills are vendored._
+### skills
+- **Repository:** https://github.com/mattpocock/skills
+- **License:** MIT
+- **Copyright:** © 2026 Matt Pocock
+- **Vendored skills:** dev/tdd
 
 <!--
 Format for each upstream:

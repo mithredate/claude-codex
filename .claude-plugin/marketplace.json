@@ -13,7 +13,8 @@
       "description": "General development tooling skills",
       "skills": [
         "./skills/install-claude-sidecar",
-        "./skills/manage-claude-md"
+        "./skills/manage-claude-md",
+        "./skills/tdd"
       ]
     },
     {

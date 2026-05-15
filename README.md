@@ -10,6 +10,7 @@ Opinionated, curated Claude Code skills — vendored from upstream sources (matt
 - **meta** — skills for maintaining this marketplace itself
   - `import-skill` — vendor a new skill from a GitHub upstream
   - `refresh-vendored` — reconcile vendored skills against upstream changes
+  - `merge-skill` — shared core that reconciles two skill versions into one (used by the above)
 - **productivity** — process and workflow skills _(empty for now)_
 - **in-progress** — skills being actively authored or rewritten _(empty for now)_
 - **deprecated** — skills phased out, kept installable during transitions _(empty for now)_

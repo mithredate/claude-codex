@@ -22,6 +22,7 @@ Create a TodoWrite item per step when invoked.
 Ask the user:
 1. **Upstream repo** in `<owner>/<repo>` form (e.g., `mattpocock/skills`).
 2. **Upstream path** within that repo (e.g., `skills/productivity/grill-me`).
+3. **README one-liner** — a short description (under ~80 chars) for the entry in the top-level `README.md` plugin list. Match the existing terse style (e.g., `vendor a new skill from a GitHub upstream`). Suggest one based on the upstream's `SKILL.md` frontmatter; user accepts or overrides.
 
 If the user is vague ("vendor grill-me from mattpocock"), help disambiguate by running `gh search code` or cloning and `find … -name SKILL.md`.
 
@@ -67,6 +68,7 @@ Show:
 - Footer text to be appended to `SKILL.md` (per [`references/footer-format.md`](references/footer-format.md))
 - `marketplace.json` entry to insert
 - `NOTICES.md` block to add or update
+- `README.md` entry to insert under the `<target_plugin>` section (manual edit in Step 8)
 
 Wait for explicit confirmation.
 
@@ -85,7 +87,21 @@ node meta/skills/import-skill/scripts/import.mjs \
 
 Surface and stop on any non-zero exit.
 
-### 8. Structural review (fresh import path)
+### 8. Update README.md (fresh import path)
+
+The import script does **not** touch `README.md`. Add the entry by hand using the one-liner gathered in Step 1:
+
+- Locate the `- **<target_plugin>** — …` line in the `## Plugins` section.
+- If the line ends with `_(empty for now)_`, remove that suffix.
+- Insert a new indented bullet directly under it:
+
+  ```
+    - `<target_name>` — <readme one-liner>
+  ```
+
+Keep the order of skills within a plugin section stable (append at the end of that plugin's group).
+
+### 9. Structural review (fresh import path)
 
 The script copies upstream files verbatim, preserving whatever layout the upstream author used. That keeps the post-import state an exact mirror of upstream (so any later edits are unambiguously *your* drift) but it may not match local conventions.
 
@@ -100,7 +116,7 @@ For each suggestion: show the move/edit, ask **yes / skip**, apply only on yes. 
 
 If the user accepts no suggestions, the skill stays an exact upstream mirror — that's fine.
 
-### 9. Validate (fresh import path)
+### 10. Validate (fresh import path)
 
 Run the official validator against the target plugin to confirm the freshly imported (and possibly restructured) skill is well-formed:
 
@@ -110,7 +126,7 @@ claude plugin validate <target_plugin>
 
 On any validation error, surface the message and stop — do not declare the import successful. The user resolves the issue (typically a footer or frontmatter problem) before committing.
 
-### 10. Report (fresh import path)
+### 11. Report (fresh import path)
 
 Show files created, files modified, and a suggested commit message:
 
@@ -120,7 +136,7 @@ vendor: import productivity/grill-me from mattpocock-skills
 
 Leave the actual `git add` / `git commit` to the user.
 
-### 11. Merge path: delegate to merge-skill
+### 12. Merge path: delegate to merge-skill
 
 When the user chose **merge** in Step 4:
 

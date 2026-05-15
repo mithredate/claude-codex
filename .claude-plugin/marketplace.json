@@ -19,6 +19,14 @@
         "./skills/claude-sidecar-installer",
         "./skills/claude-md-helper"
       ]
+    },
+    {
+      "name": "in-progress",
+      "source": "./in-progress",
+      "description": "Skills being actively authored or rewritten. Expect rough edges.",
+      "skills": [
+        "./skills/refresh-vendored"
+      ]
     }
   ]
 }

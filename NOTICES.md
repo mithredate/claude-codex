@@ -10,6 +10,12 @@ This repository vendors skills from other open-source projects. Originals retain
 - **Copyright:** © 2026 Matt Pocock
 - **Vendored skills:** dev/tdd, productivity/grill-me, productivity/write-a-skill
 
+### superpowers
+- **Repository:** https://github.com/obra/superpowers
+- **License:** MIT
+- **Copyright:** Copyright (c) 2025 Jesse Vincent
+- **Vendored skills:** dev/systematic-debugging
+
 <!--
 Format for each upstream:
 

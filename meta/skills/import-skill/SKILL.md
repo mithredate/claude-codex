@@ -20,7 +20,7 @@ Create a TodoWrite item per step when invoked.
 ### 1. Gather inputs (one prompt at a time)
 
 Ask the user:
-1. **Upstream repo** in `<owner>/<repo>` form (e.g., `mattpocock/mattpocock-skills`).
+1. **Upstream repo** in `<owner>/<repo>` form (e.g., `mattpocock/skills`).
 2. **Upstream path** within that repo (e.g., `skills/productivity/grill-me`).
 
 If the user is vague ("vendor grill-me from mattpocock"), help disambiguate by running `gh search code` or cloning and `find … -name SKILL.md`.

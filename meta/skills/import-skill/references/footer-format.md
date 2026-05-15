@@ -24,12 +24,12 @@ _<Verb> [<owner>/<repo>/<upstream-path>](https://github.com/<owner>/<repo>/tree/
 
 ```
 ---
-_Adapted from [mattpocock/mattpocock-skills/skills/productivity/grill-me](https://github.com/mattpocock/mattpocock-skills/tree/b39bb0b27867/skills/productivity/grill-me) — MIT © 2026 Matt Pocock._
+_Adapted from [mattpocock/skills/skills/productivity/grill-me](https://github.com/mattpocock/skills/tree/b39bb0b27867/skills/productivity/grill-me) — MIT © 2026 Matt Pocock._
 ```
 
 ```
 ---
-_Inspired by [mattpocock/mattpocock-skills/skills/engineering/tdd](https://github.com/mattpocock/mattpocock-skills/tree/abc1234/skills/engineering/tdd) — MIT © 2026 Matt Pocock._
+_Inspired by [mattpocock/skills/skills/engineering/tdd](https://github.com/mattpocock/skills/tree/abc1234/skills/engineering/tdd) — MIT © 2026 Matt Pocock._
 ```
 
 ## Parsing rules

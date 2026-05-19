@@ -6,19 +6,21 @@ The Validator handles every check that is **mechanical** — things a regex or a
 
 ## Inputs
 
+- **Vocabulary**: `<skill_dir>/references/CONTEXT.md` — the skill's vocabulary file. Read this first; use these terms (and not their `_Avoid_:` aliases) in your findings.
 - **Base SHA**: `<base_sha>` — the commit before this capture batch started
 - **Worktree**: `<worktree>` — absolute path to the per-session git worktree (where the in-flight drafts live). All checks operate against this path, not against the live archive clone.
 - **Diff command**: `git -C <worktree> diff <base_sha>` — yields the full cumulative change since base
 - **Format reference**: `<skill_dir>/references/decision-format.md` — the authoring spec; same one the capture agent used
 
-You do **not** need the transcript. The transcript is the Archive Auditor's and Quality Reviewer's concern.
+You do **not** need the transcript. That is the Archive Auditor's and Quality Reviewer's concern.
 
 ## Method
 
-1. Run `git diff <base_sha>` to list all changed files. Categorise into: new decision files, new synthesis files, supersede flips (frontmatter-only edits to existing decisions), transcript file.
-2. For each new file: parse the frontmatter; run the checklist below.
-3. For each modified existing decision: confirm the edit is frontmatter-only (status flip) plus optionally an appended `## Note` footer. Any other body modification is `blocking` — bodies of existing decisions must never be rewritten (history-destroying).
-4. For each edge declared: verify the target exists on disk in `<worktree>/decisions/` or `<worktree>/synthesis/`.
+1. **Read `CONTEXT.md` first** to align on terminology.
+2. Run `git diff <base_sha>` to list all changed files. Categorise into: new decision files, new synthesis files, supersede flips (frontmatter-only edits to existing decisions), transcript.
+3. For each new file: parse the frontmatter; run the checklist below.
+4. For each modified existing decision: confirm the edit is frontmatter-only (status flip) plus optionally an appended `## Note` footer. Any other body modification is `blocking` — bodies of existing decisions must never be rewritten (history-destroying).
+5. For each edge declared: verify the target exists on disk in `<worktree>/decisions/` or `<worktree>/synthesis/`.
 
 ## Checklist
 

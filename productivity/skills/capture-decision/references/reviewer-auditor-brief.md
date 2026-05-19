@@ -6,18 +6,20 @@ The Archive Auditor handles **semantic** checks that the Validator's mechanical 
 
 ## Inputs
 
+- **Vocabulary**: `<skill_dir>/references/CONTEXT.md` — the skill's vocabulary file. Read this first; use these terms (and not their `_Avoid_:` aliases) in your findings.
 - **Base SHA**: `<base_sha>`
 - **Worktree**: `<worktree>` (absolute path to the per-session git worktree; the in-flight drafts and the transcript live here, not in the live archive clone)
 - **Diff command**: `git -C <worktree> diff <base_sha>` — yields the full cumulative change since base
-- **Transcript path**: `<worktree>/transcripts/transcript-<timestamp>-<slug>.md` — read this; it is the source of truth for what the session decided
+- **transcript path**: `<worktree>/transcripts/transcript-<timestamp>-<slug>.md` — read this; it is the source of truth for what the session decided
 - **Format reference**: `<skill_dir>/references/decision-format.md`
 
 ## Method
 
-1. Read the transcript in full. Hold it as context for the transcript-faithfulness check.
-2. Run `git diff <base_sha>` to identify the in-flight drafts.
-3. For each new decision and synthesis: read the full body. Compare against (a) the transcript, (b) related existing decisions in `<worktree>/decisions/`, (c) the supersede targets if any.
-4. Apply the checklist below. Categorise findings strictly per the field schema.
+1. **Read `CONTEXT.md` first** to align on terminology.
+2. Read the transcript in full. Hold it as context for the transcript-faithfulness check.
+3. Run `git diff <base_sha>` to identify the in-flight drafts.
+4. For each new decision and synthesis: read the full body. Compare against (a) the transcript, (b) related existing decisions in `<worktree>/decisions/`, (c) the supersede targets if any.
+5. Apply the checklist below. Categorise findings strictly per the field schema.
 
 ## Checklist
 

@@ -6,18 +6,20 @@ The Quality Reviewer enforces **write-up quality** and the **triple-filter**. It
 
 ## Inputs
 
+- **Vocabulary**: `<skill_dir>/references/CONTEXT.md` — the skill's vocabulary file. Read this first; use these terms (and not their `_Avoid_:` aliases) in your findings.
 - **Base SHA**: `<base_sha>`
 - **Worktree**: `<worktree>` (absolute path to the per-session git worktree; the in-flight drafts and the transcript live here, not in the live archive clone)
 - **Diff command**: `git -C <worktree> diff <base_sha>` — yields the full cumulative change since base
-- **Transcript path**: `<worktree>/transcripts/transcript-<timestamp>-<slug>.md`
+- **transcript path**: `<worktree>/transcripts/transcript-<timestamp>-<slug>.md`
 - **Format reference**: `<skill_dir>/references/decision-format.md`
 
 ## Method
 
-1. Read each new decision file in full.
-2. Read the transcript (or relevant sections) to verify the triple-filter holds.
-3. For each decision: apply the per-decision checklist below.
-4. If a synthesis file is in the batch, apply the synthesis checklist after the per-decision pass.
+1. **Read `CONTEXT.md` first** to align on terminology.
+2. Read each new decision file in full.
+3. Read the transcript (or relevant sections) to verify the triple-filter holds.
+4. For each decision: apply the per-decision checklist below.
+5. If a synthesis file is in the batch, apply the synthesis checklist after the per-decision pass.
 
 ## Per-decision checklist
 

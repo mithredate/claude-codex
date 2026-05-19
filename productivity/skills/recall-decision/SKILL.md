@@ -12,6 +12,7 @@ The archive lives at `$DECISION_ARCHIVE_ROOT` (a local clone). Retrieval is via 
 
 ## What the references contain
 
+- `references/CONTEXT.md` — the skill's **vocabulary** file (Matt Pocock CONTEXT.md format). The sub-agent brief lists it as the first input; the recall agent reads it before anything else to align terminology and avoid the `_Avoid_:` aliases.
 - `references/decision-format.md` — **descriptive** parsing spec. How to read frontmatter, what status means for filtering, edge directionality from the consumer's angle, what to surface in a digest.
 - `references/recall-patterns.md` — canonical Bash incantations for the 8 directional traversal verbs, the three grep modes (tag / title / body), the status-filter discipline, the multi-hop pattern, and the digest assembly format.
 
@@ -43,17 +44,19 @@ Main fills in placeholders and hands the brief to the sub-agent at spawn time:
 > **Objective:** Answer the user's question against the decision archive at `<archive_root>`. Return a tight ranked digest (≤50 lines). Do NOT return full decision bodies — those are read separately by main on request.
 >
 > **Inputs:**
+> - Vocabulary: `<skill_dir>/references/CONTEXT.md` — the skill's vocabulary file. Read this first; use these terms (and not their `_Avoid_:` aliases) in the digest and any return message.
 > - Archive root: `<archive_root>` (absolute path)
 > - User's question: `<verbatim user phrasing>`
 > - Recall patterns reference: `<skill_dir>/references/recall-patterns.md`
 > - Decision format reference: `<skill_dir>/references/decision-format.md`
 >
 > **Method:**
-> 1. Read `recall-patterns.md` first. Identify which canonical pattern(s) match the user's question. The 8 directional verbs and the three grep modes (tag / title / body) cover the standard cases.
-> 2. If no canonical pattern matches, compose a pipeline using the same primitives (grep, awk, find, git). Stay close to the patterns' shape — they are the deterministic anchor.
-> 3. Run the pipeline against `<archive_root>`. Default to `status: accepted` filter unless the user explicitly asks about superseded decisions ("what did 0007 supersede?", "show me retired decisions about X").
-> 4. Rank results: tag-match results rank above title-match; title-match above body-match. Within a tier, prefer recent (higher ID) over older.
-> 5. Assemble the digest per the format in `recall-patterns.md` (`digest assembly format` section).
+> 1. Read `CONTEXT.md` first to align on terminology.
+> 2. Read `recall-patterns.md`. Identify which canonical pattern(s) match the user's question. The 8 directional verbs and the three grep modes (tag / title / body) cover the standard cases.
+> 3. If no canonical pattern matches, compose a pipeline using the same primitives (grep, awk, find, git). Stay close to the patterns' shape — they are the deterministic anchor.
+> 4. Run the pipeline against `<archive_root>`. Default to `status: accepted` filter unless the user explicitly asks about superseded decisions ("what did 0007 supersede?", "show me retired decisions about X").
+> 5. Rank results: tag-match results rank above title-match; title-match above body-match. Within a tier, prefer recent (higher ID) over older.
+> 6. Assemble the digest per the format in `recall-patterns.md` (`digest assembly format` section).
 >
 > **Output constraints:**
 > - ≤50 lines total (including any header line).
@@ -114,7 +117,7 @@ If the `Explore` sub-agent returns a thin or unhelpful digest:
 - The user opts in. Main re-spawns with `general-purpose` and the same brief (plus the prior digest as context).
 - The `general-purpose` agent may read full bodies; its digest is still ≤50 lines and still does not return bodies to main.
 
-If a query consistently returns nothing useful, that's a **retrieval miss** (per the failure-mode taxonomy in CONTEXT.md). The user captures the miss; later analysis may inform changes to the tagging discipline or the recall patterns.
+If a query consistently returns nothing useful, that's a **retrieval miss** (per the retrieval-miss / traversal-miss taxonomy in CONTEXT.md). The user captures the miss; later analysis may inform changes to the tagging discipline or the recall patterns.
 
 ## Edge cases
 

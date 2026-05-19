@@ -14,6 +14,7 @@ The archive lives at `$DECISION_ARCHIVE_ROOT` (a local clone of the user's decis
 
 Sub-agents do not inherit the skill directory automatically. Brief templates pass these paths explicitly.
 
+- `references/CONTEXT.md` — the skill's **vocabulary** file (Matt Pocock CONTEXT.md format). Each sub-agent brief lists it as the first input; sub-agents read it before anything else to align terminology and avoid the `_Avoid_:` aliases.
 - `references/decision-format.md` — **normative** authoring spec (frontmatter, edge vocabulary, slug convention, ID assignment, body sections, triple-filter, supersede mechanics, synthesis structure).
 - `references/drafting-brief.md` — template the capture sub-agent receives; round-1 vs round-N>1 inputs; surgical-fix directive; required output schema.
 - `references/reviewer-validator-brief.md` — mechanical checklist; spawn as `Explore`.

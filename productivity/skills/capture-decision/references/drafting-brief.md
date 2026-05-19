@@ -10,10 +10,11 @@ Draft the closed-off forks from the in-scope conversation into the per-session g
 
 ## Inputs (round 1)
 
+- **Vocabulary**: `<skill_dir>/references/CONTEXT.md` — the skill's vocabulary file. Read this first; it pins the names you must use in `Chosen`, `Rationale`, slugs, tags, and the returned digest. The `_Avoid_:` aliases are not synonyms.
 - **Worktree**: `<worktree>` (absolute path to the per-session git worktree, e.g., `/Users/<user>/projects/decision-archive/.claude/worktrees/capture-<timestamp>-<slug>`). All operations happen here, not in the live clone.
 - **Base SHA**: `<base_sha>` (the capture-decision pre-flight captured this; the diff invariant is `git diff <base_sha>`)
-- **Transcript path**: `<worktree>/transcripts/transcript-<timestamp>-<slug>.md` — read this faithfully; treat it as the source of truth for what the session decided
-- **Recall digest**: <inline ≤50-line digest of related existing decisions from the recall sub-agent>
+- **transcript path**: `<worktree>/transcripts/transcript-<timestamp>-<slug>.md` — read this faithfully; treat it as the source of truth for what the session decided
+- **Recall digest**: <inline ≤50-line digest of related existing decisions from the recall agent>
 - **Format reference**: `<skill_dir>/references/decision-format.md` — read this before drafting; it defines the schema, the slug convention, the body sections, the triple-filter, and the supersede mechanics
 
 ## Inputs (round 2+ — additive, not substitutive)
@@ -25,42 +26,44 @@ Draft the closed-off forks from the in-scope conversation into the per-session g
 
 ## Method
 
-1. **Read the transcript first.** Not the recall digest, not the format reference — the transcript. This is the source-of-truth for what was decided. Reviewers will hold every assertion in your `Chosen` and `Rationale` sections to what the transcript supports.
+1. **Read `CONTEXT.md` first.** Pin the vocabulary in your head before you touch substance — what counts as a *decision* vs *synthesis* vs *thread*, what *supersession* means, what the `_Avoid_:` aliases are. This is the cheap, foundational step.
 
-2. **Then read the format reference** (`decision-format.md`). Internalise: the triple-filter, the edge vocabulary, the slug convention, the supersede mechanics, the synthesis structure. The reviewers enforce all of it.
+2. **Then read the transcript.** Not the recall digest, not the format reference — the transcript. This is the source-of-truth for what was decided. Reviewers will hold every assertion in your `Chosen` and `Rationale` sections to what the transcript supports.
 
-3. **Then read the recall digest.** Use it to identify likely edge targets. Edges declared in your drafts must reflect real relationships visible in the transcript — not just "this decision is about a related topic." The Archive Auditor checks edge justification.
+3. **Then read the format reference** (`decision-format.md`). Internalise: the triple-filter, the edge vocabulary, the slug convention, the supersede mechanics, the synthesis structure. The reviewers enforce all of it.
 
-4. **Apply the triple-filter** to every candidate fork:
+4. **Then read the recall digest.** Use it to identify likely edge targets. Edges declared in your drafts must reflect real relationships visible in the transcript — not just "this decision is about a related topic." The Archive Auditor checks edge justification.
+
+5. **Apply the triple-filter** to every candidate fork:
    - Hard to reverse?
    - Surprising without context?
    - Real trade-off (genuinely-considered alternatives)?
 
    If any of the three fails, the fork is not a decision. Drop it or fold it into the synthesis as narrative.
 
-5. **Draft alternatives-non-empty.** Every decision file must have at least two entries in `Alternatives considered`. An empty or single-item list invalidates the decision; the Quality Reviewer catches this as `blocking`.
+6. **Draft alternatives-non-empty.** Every decision file must have at least two entries in `Alternatives considered`. An empty or single-item list invalidates the decision; the Quality Reviewer catches this as `blocking`.
 
-6. **Articulate the `Rationale`.** A thin `Rationale` is a Quality Reviewer finding. Address every non-chosen alternative explicitly: what it would have cost, what it would have prevented. Without explicit rejection notes, a future reader cannot tell whether the rejected options were considered or merely overlooked.
+7. **Articulate the `Rationale`.** A thin `Rationale` is a Quality Reviewer finding. Address every non-chosen alternative explicitly: what it would have cost, what it would have prevented. Without explicit rejection notes, a future reader cannot tell whether the rejected options were considered or merely overlooked.
 
-7. **Surface assumptions.** The `Assumptions` section is where you list the beliefs this decision rests on. When an assumption later turns out wrong, the decision becomes a rewind candidate. Empty assumptions are tolerated when truly none apply; usually they don't.
+8. **Surface assumptions.** The `Assumptions` section is where you list the beliefs this decision rests on. When an assumption later turns out wrong, the decision becomes a rewind candidate. Empty assumptions are tolerated when truly none apply; usually they don't.
 
-8. **Handle supersessions in the same round.** If a new decision supersedes an existing one, you must in this same round:
+9. **Handle supersessions in the same round.** If a new decision supersedes an existing one, you must in this same round:
    - Set the new decision's `supersedes: [X]` edge.
    - `Edit` X's frontmatter to flip `status: accepted` → `status: superseded`.
    - Cite X in the new decision's `Rationale` — explain what changed and why.
    - Optionally add a `## Note — Superseded by <new-id>` footer to X's body.
 
-9. **Edge directionality discipline.**
-   - `depends-on` — from this decision **to** what it depends on. Lower IDs typically.
-   - `supersedes` — from successor **to** retired predecessor.
-   - `informs` — from influencing decision **to** influenced one.
-   - `synthesizes` — from synthesis file **to** the decisions it covers.
+10. **Edge directionality discipline.**
+    - `depends-on` — from this decision **to** what it depends on. Lower IDs typically.
+    - `supersedes` — from successor **to** retired predecessor.
+    - `informs` — from influencing decision **to** influenced one.
+    - `synthesizes` — from synthesis file **to** the decisions it covers.
 
-   **Edge liveness:** "A supersedes B → A depends-on B" is legitimate (the successor often builds on its predecessor's framing). But "C depends-on B where B is superseded by D and C is not the supersession" is wrong — C likely depends on D's live principle, not B's retired framing. Re-target.
+    **Edge liveness:** "A supersedes B → A depends-on B" is legitimate (the successor often builds on its predecessor's framing). But "C depends-on B where B is superseded by D and C is not the supersession" is wrong — C likely depends on D's live principle, not B's retired framing. Re-target.
 
-10. **Write IDs sequentially.** Scan `<worktree>/decisions/` (and `<worktree>/synthesis/` if writing a synthesis) for the highest existing integer ID; assign new IDs starting from that + 1. The two namespaces increment independently.
+11. **Write IDs sequentially.** Scan `<worktree>/decisions/` (and `<worktree>/synthesis/` if writing a synthesis) for the highest existing integer ID; assign new IDs starting from that + 1. The two namespaces increment independently.
 
-11. **Synthesis is optional, written at most once per batch.** Include one if (and only if) the batch has connective tissue worth narrating — an architectural reframe, a supersede chain, follow-up threads. If you write a synthesis, its `synthesizes` edges must cover every decision in the batch.
+12. **Synthesis is optional, written at most once per batch.** Include one if (and only if) the batch has connective tissue worth narrating — an architectural reframe, a supersede chain, follow-up threads. If you write a synthesis, its `synthesizes` edges must cover every decision in the batch.
 
 ## Boundaries
 

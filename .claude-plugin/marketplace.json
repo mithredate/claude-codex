@@ -26,7 +26,9 @@
       "skills": [
         "./skills/grill-me",
         "./skills/write-a-skill",
-        "./skills/handoff"
+        "./skills/handoff",
+        "./skills/capture-decision",
+        "./skills/recall-decision"
       ]
     },
     {

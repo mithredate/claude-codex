@@ -17,6 +17,8 @@ Opinionated, curated Claude Code skills — vendored from upstream sources (matt
   - `grill-me` — stress-test a plan or design by interrogation
   - `write-a-skill` — author new skills with proper structure and progressive disclosure
   - `handoff` — compact the current conversation into a handoff doc for the next session
+  - `capture-decision` — end-of-session capture into a decision archive via multi-agent review loop
+  - `recall-decision` — mid-session lookup against a decision archive via a sub-agent digest
 - **in-progress** — skills being actively authored or rewritten _(empty for now)_
 - **deprecated** — skills phased out, kept installable during transitions _(empty for now)_
 

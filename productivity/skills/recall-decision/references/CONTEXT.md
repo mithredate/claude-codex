@@ -17,12 +17,30 @@ A per-session narrative file integrating one or more decisions, with optional th
 _Avoid_: Summary, retrospective, overview.
 
 **Edge**:
-A typed relationship between archive files, drawn from a fixed vocabulary: `depends-on`, `supersedes`, `informs`, `synthesizes`. Declared on the source file; points at the target by integer ID.
+A typed relationship between archive files, drawn from a fixed vocabulary: `depends-on`, `supersedes`, `informs`, `synthesizes`. Declared on the source file; points at the target by ULID. **Intra-archive only** — edges never cross from one archive to another.
 _Avoid_: Link, reference, relation.
+
+**ULID**:
+The 26-character Crockford base32 identifier used as a decision or synthesis ID (e.g., `01JX4F8K2MABCDEFGHIJKLMNOP`). Globally unique across archives and lexicographically sortable by creation time, so a later ULID is the more recent decision. Filenames are `<ULID>-<slug>.md`; frontmatter `id:` holds the ULID; all edge references are ULID-valued.
+_Avoid_: ID number, integer ID, decision number.
 
 **Tag**:
 A free-form lowercase kebab-case label in a decision's frontmatter, the primary axis for topical grep-based retrieval. Tag-match ranks above title-match, which ranks above body-match.
 _Avoid_: Label, category, keyword.
+
+### Archives
+
+**Archive**:
+A single decision-archive clone. `$DECISION_ARCHIVE_ROOT` is a comma-separated list of archive paths; each entry is one archive. A single-path value is a valid one-element list (the common case).
+_Avoid_: Repo, store, vault.
+
+**Archive name**:
+The **basename** of an archive's path (e.g., `/Users/foo/decision-archive` → `decision-archive`). Used in the multi-select prompt and as the digest line's `[<archive>]` prefix. Not configurable — the basename is the rule.
+_Avoid_: Archive alias, archive label, archive id.
+
+**Multi-archive**:
+The configuration where `DECISION_ARCHIVE_ROOT` lists more than one path. The skill prompts the user to multi-select which archives to query before dispatching the recall agent; the digest annotates each line with the archive basename. Edges remain strictly intra-archive — the sub-agent never traverses an edge across archive boundaries.
+_Avoid_: Cross-archive, federated search.
 
 ### Lookup flow
 

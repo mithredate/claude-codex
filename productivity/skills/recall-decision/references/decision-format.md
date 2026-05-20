@@ -8,12 +8,14 @@ The capture-decision skill ships a sibling `decision-format.md` written from the
 
 ## Archive layout you'll be reading
 
+`$DECISION_ARCHIVE_ROOT` is a **comma-separated list** of archive paths; each path has this layout:
+
 ```
-$DECISION_ARCHIVE_ROOT/
+<archive-root>/
 ├── decisions/
-│   └── <id>-<namespace>-<slug>.md
+│   └── <ULID>-<namespace>-<slug>.md
 ├── synthesis/
-│   └── <id>-<namespace>-<slug>.md
+│   └── <ULID>-<namespace>-<slug>.md
 └── transcripts/
     └── transcript-<YYYYMMDD-HHMMSS>-<slug>.md
 ```
@@ -22,7 +24,9 @@ $DECISION_ARCHIVE_ROOT/
 - **synthesis/** — per-session narratives integrating one or more decisions.
 - **transcripts/** — committed source conversations (one per capture batch). Searchable if you need to ground a decision in its session; not typically surfaced in a recall digest.
 
-IDs are sequential within their own directory. The two namespaces increment independently — `decisions/0017-...` and `synthesis/0003-...` can coexist with no conflict.
+IDs are **ULIDs** (26-char Crockford base32, e.g., `01JX4F8K2MABCDEFGHIJKLMNOP`). They are globally unique and lexicographically sortable by creation time — a later ULID is the more recent decision. The two directories share no ID space concerns (every ULID is unique anywhere), and IDs do not collide across archives either.
+
+**Edges are intra-archive only.** A decision's `depends-on`, `supersedes`, `informs`, or `synthesizes` ULIDs always reference targets in the *same* archive. The sub-agent never resolves an edge ID against a different archive — if a target isn't found in the home archive, surface it as `match=unresolved-edge:<id>` instead.
 
 ---
 
@@ -30,15 +34,15 @@ IDs are sequential within their own directory. The two namespaces increment inde
 
 ```yaml
 ---
-id: 14
+id: 01JX4F8K2MABCDEFGHIJKLMNOP
 slug: decision-archive-two-skill-split
 title: Two skills — capture-decision and recall-decision
 status: accepted
 tags: [decision-archive, skill-architecture, v1]
 edges:
-  depends-on: [1, 8]
+  depends-on: [01JX1A3B4C5D6E7F8G9H0J1K2L, 01JX2M3N4O5P6Q7R8S9T0U1V2W]
   supersedes: []
-  informs: [4]
+  informs: [01JX3X4Y5Z6A7B8C9D0E1F2G3H]
 ---
 ```
 
@@ -46,14 +50,14 @@ edges:
 
 | Field | What it tells you |
 |---|---|
-| `id` | The unique integer key for this decision in its directory. Edges reference by ID, never by slug — so this is the key you'll see in other decisions' `depends-on` / `supersedes` / `informs` lists. |
+| `id` | The unique ULID key for this decision (26-char Crockford base32). Edges reference by ULID, never by slug — so this is the key you'll see in other decisions' `depends-on` / `supersedes` / `informs` lists. ULIDs are globally unique and lexicographically sortable by creation time. |
 | `slug` | The kebab-case label, namespaced (`decision-archive-*` in the current archive). Useful for human-readable references and for matching against title-style queries. |
 | `title` | The one-line human-readable title. The H1 in the body mirrors this. Most useful for ranking — title-match outranks body-match. |
 | `status` | `accepted` = live. `superseded` = retired (a successor exists in the archive). **No third state.** When filtering for "current decisions only", filter to `accepted`. |
 | `tags` | Free-form lowercase kebab-case labels. The primary axis for topical retrieval. Tag-match outranks title-match in ranking. |
-| `edges.depends-on` | Decisions this one builds on. **Direction: from this file TO the targets.** If you're reading file F with `depends-on: [X, Y]`, F depends on X and Y. |
-| `edges.supersedes` | Decisions this one retires. **Direction: from successor TO retired predecessor.** If F has `supersedes: [X]`, F retires X (X's status is now `superseded`). |
-| `edges.informs` | Decisions this one influences (weaker than `depends-on`). **Direction: from influencing decision TO influenced one.** |
+| `edges.depends-on` | Decisions this one builds on. **Direction: from this file TO the targets.** If you're reading file F with `depends-on: [X, Y]`, F depends on X and Y. Targets are ULIDs within the **same archive**. |
+| `edges.supersedes` | Decisions this one retires. **Direction: from successor TO retired predecessor.** If F has `supersedes: [X]`, F retires X (X's status is now `superseded`). Intra-archive only. |
+| `edges.informs` | Decisions this one influences (weaker than `depends-on`). **Direction: from influencing decision TO influenced one.** Intra-archive only. |
 
 ### Synthesis-only fields
 
@@ -61,11 +65,12 @@ Synthesis files have an additional edge type and an optional `spawns-threads` bl
 
 ```yaml
 edges:
-  synthesizes: [14, 15, 16, 17, 18, 19, 20, 21]
+  synthesizes: [01JX4F8K2MABCDEFGHIJKLMNOP, 01JX4F8K3NBBCDEFGHIJKLMNOP, 01JX4F8K4ODBCDEFGHIJKLMNOP]
+  informs: []
 spawns-threads:
-  - topic: Multi-archive support
-    why-deferred: Single env var sufficient for solo v1
-    revisit-trigger: When a second archive is needed in practice
+  - topic: Tag taxonomy refinement
+    why-deferred: Current free-form tags suffice; revisit after more decisions accumulate
+    revisit-trigger: When tag-match returns too many false positives
     rough-size: small
   - ...
 ```
@@ -79,18 +84,18 @@ spawns-threads:
 
 **Default filter: `status: accepted`.**
 
-Most recall queries care only about live decisions. When the user asks "what do we have on X?", "have we decided about Y?", or "what depends on 0042?", they want the current state of the archive, not retired framings.
+Most recall queries care only about live decisions. When the user asks "what do we have on X?", "have we decided about Y?", or "what depends on the indexer decision?", they want the current state of the archive, not retired framings.
 
 **Show `superseded` only when:**
 
 - The user asks explicitly: "what's been superseded?", "show me retired decisions", "what did we decide about X before?".
-- The query traverses a `supersedes` edge in either direction: "what did 0007 supersede?", "what supersedes the indexer decision?".
-- The user references a known-superseded ID directly: "tell me about 0011" (which is now superseded by 0017) — surface it with the superseded status noted, and include a pointer to its successor.
+- The query traverses a `supersedes` edge in either direction: "what did the format decision supersede?", "what supersedes the indexer decision?".
+- The user references a known-superseded decision directly by slug or ULID — surface it with the superseded status noted, and include a pointer to its successor.
 
 When surfacing superseded decisions in a digest, the line should make the status visible:
 
 ```
-0011 decision decision-archive-align-plan-write-files-status-proposed | status=superseded ...
+01JX0Y9Z8AKLMNOPQRSTUVWXYZ decision decision-archive-align-plan-write-files-status-proposed | status=superseded ...
 ```
 
 So the user knows what they're looking at without having to read the body.
@@ -154,13 +159,14 @@ When the user's query is a topic phrase ("retrieval", "context hygiene"), tag-ma
 
 For each candidate decision, the digest line carries:
 
-- `id` (zero-padded, 4 digits)
+- Archive basename prefix (`[<archive>]`) — present when more than one archive was selected; omitted otherwise.
+- `id` — the ULID.
 - `kind` (decision / synthesis)
 - `slug`
 - `title` (extracted from frontmatter or first H1; not paraphrased)
 - `status` (accepted / superseded)
 - `tags` (the frontmatter list)
-- `match_kind` (`tag:<tag>` / `title:<term>` / `body:<term>` / `<verb>:<id>` for edge traversals / `hops:N` for multi-hop)
+- `match_kind` (`tag:<tag>` / `title:<term>` / `body:<term>` / `<verb>:<id>` for edge traversals / `hops:N` for multi-hop / `unresolved-edge:<id>` when an edge target isn't found within the same archive)
 - One-line relevance — a string extracted from the title or the first paragraph of the body. **Do not paraphrase.** Extract.
 
 The line shape is in `recall-patterns.md`'s `digest assembly format` section. ≤50 lines total.

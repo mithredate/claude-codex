@@ -28,7 +28,7 @@ You do **not** need the transcript. That is the Archive Auditor's and Quality Re
 
 For every new decision file, confirm the frontmatter has all required fields:
 
-- `id` (integer, present)
+- `id` (ULID string, present — 26 characters, Crockford base32 alphabet; uppercase is conventional). The canonical regex for an `id:` value is `^[0-9A-HJKMNP-TV-Z]{26}$` — the 32-character Crockford alphabet excludes `I`, `L`, `O`, `U`. Anything failing this regex is a `blocking` "invalid ULID" finding.
 - `slug` (string, present)
 - `title` (string, present)
 - `status` (must be `accepted` for new files — see status section below)
@@ -37,7 +37,7 @@ For every new decision file, confirm the frontmatter has all required fields:
 - `edges.supersedes` (list, present; empty `[]` allowed)
 - `edges.informs` (list, present; empty `[]` allowed)
 
-For synthesis files, additionally:
+Synthesis files must satisfy all of the decision-file frontmatter rules above (including explicit `edges.depends-on: []`, `edges.supersedes: []`, `edges.informs: []` when empty), plus:
 
 - `edges.synthesizes` (list, present; **must be non-empty** for synthesis files — a synthesis with no synthesized decisions is invalid)
 - `spawns-threads` (optional; if present, every entry must have all four sub-fields: `topic`, `why-deferred`, `revisit-trigger`, `rough-size`)
@@ -46,27 +46,29 @@ Any missing required field → `blocking`.
 
 ### Slug + filename consistency
 
-- The slug must match the filename (minus `.md` extension and minus the leading `<id>-` prefix). Mismatch → `blocking`.
+- The slug must match the filename (minus `.md` extension and minus the leading `<ULID>-` prefix). Mismatch → `blocking`.
 - The slug must be lowercase kebab-case. Any uppercase or underscore → `blocking`.
 - The slug must start with the archive's namespace prefix (look at existing decisions in `<worktree>/decisions/` to infer the namespace; the current archive uses `decision-archive`). Missing prefix → `blocking`.
 
-### ID uniqueness and sequence
+### ID format and uniqueness
 
-- Every new decision's `id` is unique within `<worktree>/decisions/`. Collision → `blocking`.
-- Every new synthesis's `id` is unique within `<worktree>/synthesis/`. Collision → `blocking`.
-- IDs in the batch are sequentially assigned starting from `(max_existing_id + 1)`. Gaps in the batch's own IDs → `nit` (legal but unusual).
+- Every new file's `id` (and its filename prefix) is a valid **ULID**: exactly 26 characters, Crockford base32. Match against the canonical regex `^[0-9A-HJKMNP-TV-Z]{26}$` (the alphabet excludes `I`, `L`, `O`, `U`). Anything else → `blocking`.
+- **Legacy detection.** A zero-padded integer prefix (`0014-...`) or a numeric `id:` value in a new file → `blocking` (legacy convention; the archive uses ULIDs).
+- Every new file's `id` is unique across `<worktree>/decisions/` **and** `<worktree>/synthesis/` (ULIDs are globally unique by construction, so any collision indicates a generation bug). Collision → `blocking`.
+- The `id` value in the frontmatter must match the ULID portion of the filename. Mismatch → `blocking`.
 
 ### Edge schema
 
 - Only the four edge types are valid: `depends-on`, `supersedes`, `informs`, `synthesizes`.
 - `synthesizes` only appears in synthesis files. A decision file with `synthesizes` → `blocking`.
-- All edge values are lists of integers (decision IDs).
-- A non-integer entry (e.g., a slug instead of an ID) → `blocking`.
+- All edge values are lists of **ULID strings**. A list of integers (legacy) or a list containing slugs → `blocking`.
+- A non-ULID entry (string that fails the canonical regex `^[0-9A-HJKMNP-TV-Z]{26}$`) → `blocking`.
 
 ### Edge target existence
 
-- For every `<id>` referenced in any edge: verify a file named `<id>-*.md` exists in `<worktree>/decisions/` or `<worktree>/synthesis/`. Dangling reference → `blocking`.
+- For every `<ULID>` referenced in any edge: verify a file named `<ULID>-*.md` exists in `<worktree>/decisions/` or `<worktree>/synthesis/`. Dangling reference → `blocking`.
 - Targets may include files created in this same batch (cross-references within the batch are legal).
+- Cross-archive references (a ULID that does not resolve to any file in `<worktree>`) → `blocking`. Edges are intra-archive only.
 
 ### Status of newly-written files
 
@@ -75,8 +77,8 @@ Any missing required field → `blocking`.
 
 ### Supersede flips honored
 
-- For every new decision declaring `supersedes: [X]`: confirm decision X's file now has `status: superseded`. If X is still `accepted` post-batch → `blocking`.
-- For every existing file flipped to `status: superseded` in the diff: confirm some new decision in the batch declares `supersedes: [X]`. An orphan flip (status changed but no successor declared) → `blocking`.
+- For every new decision declaring `supersedes: [<ULID-of-X>]`: confirm decision X's file now has `status: superseded`. If X is still `accepted` post-batch → `blocking`.
+- For every existing file flipped to `status: superseded` in the diff: confirm some new decision in the batch declares `supersedes: [<ULID-of-X>]`. An orphan flip (status changed but no successor declared) → `blocking`.
 
 ### Supersede chain consistency
 
@@ -103,7 +105,10 @@ For synthesis files: structure is more flexible (see `decision-format.md`), but 
 
 ### Body-edit detection on existing files
 
-- Diffs on existing decision/synthesis files must be **frontmatter-only** (`status` flip) plus optionally appending a `## Note` footer. Any change inside the original body sections → `blocking` ("body of existing decision modified — destroys history").
+Diffs on existing decision/synthesis files are restricted to two specific shapes; anything outside both is `blocking` ("body of existing decision modified — destroys history"):
+
+- **Frontmatter changes** confined to `status` (e.g., `accepted` → `superseded`).
+- **A new `## Note` section appended at the end of the file**, after all pre-existing sections. The Note section is allowed because it records the supersession event (e.g., a one-line "Superseded by `<ULID>`" reference); modifications inside or insertions before any pre-existing section remain `blocking`.
 
 ## Output schema
 

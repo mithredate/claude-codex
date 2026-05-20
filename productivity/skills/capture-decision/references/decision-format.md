@@ -9,16 +9,16 @@ The recall-decision skill ships a sibling `decision-format.md` written from the 
 ## File layout in the archive
 
 ```
-$DECISION_ARCHIVE_ROOT/
+$ARCHIVE_ROOT/
 ├── decisions/
-│   └── <id>-<namespace>-<slug>.md
+│   └── <ULID>-<namespace>-<slug>.md
 ├── synthesis/
-│   └── <id>-<namespace>-<slug>.md
+│   └── <ULID>-<namespace>-<slug>.md
 └── transcripts/
     └── transcript-<YYYYMMDD-HHMMSS>-<slug>.md
 ```
 
-Decision and synthesis IDs are sequential within their own directory (the two namespaces do not collide). Transcripts are timestamp-prefixed, not ID-prefixed.
+`$ARCHIVE_ROOT` is the single archive selected for this capture session (Pre-flight resolves it from the comma-separated `$DECISION_ARCHIVE_ROOT` list). Decision and synthesis files share the ULID namespace — ULIDs are globally unique, so there is no risk of collision between the two directories or across archives. Transcripts are timestamp-prefixed, not ULID-prefixed.
 
 ---
 
@@ -28,29 +28,38 @@ Decision and synthesis IDs are sequential within their own directory (the two na
 
 The namespace prefix is uniform within one archive. The current archive's namespace is `decision-archive`. A different archive (e.g., one capturing n8n workflow decisions) would use a different prefix (`n8n-workflows`).
 
-The namespace appears in the slug because filenames travel outside content-scope (shared links, file pickers, autocompletion, grep across the whole machine). Tags and directories carry namespace at content-scope; filenames need it too. Yes, this produces redundant-looking filenames like `0001-decision-archive-decision-as-closed-off-fork.md` — the uniformity is the value.
+The namespace appears in the slug because filenames travel outside content-scope (shared links, file pickers, autocompletion, grep across the whole machine). Tags and directories carry namespace at content-scope; filenames need it too. Yes, this produces redundant-looking filenames like `01JX4F8K2MABCDEFGHIJKLMNOP-decision-archive-decision-as-closed-off-fork.md` — the uniformity is the value.
 
 **Examples:**
-- `0014-decision-archive-two-skill-split`
-- `0008-decision-archive-file-format-and-synthesis-layer`
+- `01JX4F8K2MABCDEFGHIJKLMNOP-decision-archive-two-skill-split`
+- `01JX4F9N3QABCDEFGHIJKLMNOP-decision-archive-file-format-and-synthesis-layer`
 
-The filename mirrors the slug exactly: `<id>-<slug>.md`.
+The filename mirrors the slug exactly: `<ULID>-<slug>.md`.
 
 ---
 
 ## ID assignment
 
-Decisions: scan `decisions/` for the highest existing ID, add 1.
+Decisions and synthesis files use **ULIDs** (26-character Crockford base32, lexicographically sortable by creation time). The capture agent generates a fresh ULID per new file at draft time.
+
+Use this stdlib-only Python one-liner as the canonical producer:
 
 ```bash
-ls "$DECISION_ARCHIVE_ROOT/decisions/" | grep -oE '^[0-9]+' | sort -n | tail -1
+python3 -c '
+import secrets, time
+A = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+def b32(n, w): return "".join(A[(n >> (5*i)) & 31] for i in range(w-1, -1, -1))
+t = time.time_ns() // 1_000_000
+r = int.from_bytes(secrets.token_bytes(10), "big")
+print(b32(t, 10) + b32(r, 16))
+'
 ```
 
-Synthesis: same pattern against `synthesis/`. The two namespaces increment independently.
+It emits a 26-character string: a 10-character millisecond-timestamp prefix plus 16 characters of randomness, all in Crockford base32 (alphabet `0123456789ABCDEFGHJKMNPQRSTVWXYZ` — excludes `I`, `L`, `O`, `U`). No external dependencies, no network calls, no installation.
 
-When the batch writes multiple decisions, assign IDs in the order the decisions logically build on each other (foundational first, dependent later). This makes the `depends-on` edges flow toward lower IDs whenever possible — a soft convention that aids legibility.
+ULIDs are globally unique by construction, so there is no scan-for-max-and-increment step and no risk of collision between the `decisions/` and `synthesis/` namespaces or across archives. Within a batch, ULIDs sort by creation order naturally — assign them in the order the decisions logically build on each other (foundational first, dependent later) and the lexicographic sort will mirror that. This is a soft convention that aids legibility; no validator enforces it.
 
-Edges always reference targets by integer `id`, never by slug. Renaming a slug is therefore zero-risk for graph integrity.
+Edges always reference targets by **ULID string**, never by slug. Renaming a slug is therefore zero-risk for graph integrity.
 
 ---
 
@@ -58,15 +67,15 @@ Edges always reference targets by integer `id`, never by slug. Renaming a slug i
 
 ```yaml
 ---
-id: <integer>
+id: <ULID string>
 slug: <kebab-case, includes namespace prefix>
 title: <one-line human-readable title; sentence case>
 status: accepted | superseded
 tags: [<tag1>, <tag2>, ...]
 edges:
-  depends-on: [<id>, <id>, ...]
-  supersedes: [<id>, ...]
-  informs: [<id>, ...]
+  depends-on: [<ULID>, <ULID>, ...]
+  supersedes: [<ULID>, ...]
+  informs: [<ULID>, ...]
 ---
 ```
 
@@ -74,25 +83,30 @@ edges:
 
 | Field | Required | Type | Notes |
 |---|---|---|---|
-| `id` | yes | integer | Sequential within `decisions/`. Matches filename prefix. |
+| `id` | yes | string (ULID) | 26-char Crockford base32. Matches filename prefix. Globally unique. |
 | `slug` | yes | string | Namespaced kebab-case. Matches filename (minus `.md`). |
 | `title` | yes | string | One line, sentence case. Mirrored as the H1 in the body. |
 | `status` | yes | enum | `accepted` for new decisions. `superseded` only when a successor exists. **Never `proposed` — that state does not exist in the two-state lifecycle.** |
-| `tags` | yes | list[string] | 3–6 entries. Lowercase kebab-case. Free-form; used by grep at recall time. |
-| `edges.depends-on` | yes (`[]` if none) | list[int] | Decisions whose substance this one builds on. |
-| `edges.supersedes` | yes (`[]` if none) | list[int] | Decisions this one retires. Authors flip the target's status to `superseded` in the same batch. |
-| `edges.informs` | yes (`[]` if none) | list[int] | Decisions this one influences but does not directly depend on. |
+| `tags` | yes | list[string] | The key is required; 3–6 entries recommended. Empty list or fewer than 3 entries surfaces as `nit` (not blocking). Lowercase kebab-case. Free-form; used by grep at recall time. |
+| `edges.depends-on` | yes (`[]` if none) | list[ULID] | Decisions whose substance this one builds on. |
+| `edges.supersedes` | yes (`[]` if none) | list[ULID] | Decisions this one retires. Authors flip the target's status to `superseded` in the same batch. |
+| `edges.informs` | yes (`[]` if none) | list[ULID] | Decisions this one influences but does not directly depend on. |
 
 The edges block is mandatory; empty lists are explicit (`supersedes: []`), not omitted.
 
+**Edges are intra-archive only.** Every ULID in an edge field must refer to a file inside the current archive (`$ARCHIVE_ROOT`). If a decision conceptually relates to a decision in another archive, that reference stays as prose in `Rationale` or `Note` — never as a structured edge. The Archive Auditor flags any cross-archive ULID in an edge field as `blocking`.
+
 ### Synthesis-only edge
 
-Synthesis files use an additional edge type and omit `informs` typically:
+Synthesis files use an additional edge type. They typically have no `informs` targets, but the field is still **explicit, not omitted** — symmetric with the decision-edges rule above. Empty lists in synthesis frontmatter take the form `informs: []`, never just leaving the key out:
 
 ```yaml
 edges:
-  synthesizes: [<id>, <id>, ...]
+  synthesizes: [<ULID>, <ULID>, ...]
+  informs: []
 ```
+
+The Validator enforces this symmetry on synthesis files just as it does on decision files.
 
 Plus an optional top-level `spawns-threads` list:
 
@@ -117,7 +131,7 @@ Four edge types are recognised. New types may be added only after a real case ha
 
 "This decision builds on the substance of decision X. If X were retracted, this decision would need re-evaluation."
 
-Directionality: from this decision **to** the dependency. If `0014` declares `depends-on: [0008]`, then `0014`'s substance depends on `0008`'s substance.
+Directionality: from this decision **to** the dependency. If decision A declares `depends-on: [<ULID-of-B>]`, then A's substance depends on B's substance.
 
 Use when the new decision's `Chosen` or `Rationale` materially relies on a prior decision's substance.
 
@@ -130,7 +144,7 @@ Directionality: from the successor **to** the retired decision.
 When a draft declares `supersedes: [X]`, the capture agent must in the same round:
 
 1. Set X's `status` from `accepted` to `superseded`.
-2. Optionally add a "Note" section at the end of X's body explaining what supersedes it (path-by-id, e.g., "Superseded by 0014").
+2. Optionally add a "Note" section at the end of X's body explaining what supersedes it (path-by-id, e.g., "Superseded by `<ULID-of-successor>`").
 
 Do not edit X's `Chosen` or `Rationale` in place — that destroys history. The supersession edge plus the status flip is the entire mechanism.
 
@@ -208,9 +222,9 @@ The Quality reviewer enforces this gate. If any of the three fails, the draft do
 
 When the batch retires an existing decision:
 
-1. **In the successor's frontmatter:** `supersedes: [X]`
+1. **In the successor's frontmatter:** `supersedes: [<ULID-of-X>]`
 2. **In X's frontmatter:** flip `status: accepted` → `status: superseded`
-3. **In X's body (optional but recommended):** add a footer `## Note — Superseded by <successor-id>` with one or two sentences describing what changed.
+3. **In X's body (optional but recommended):** add a footer `## Note — Superseded by <successor-ULID>` with one or two sentences describing what changed.
 4. **In the successor's `Rationale`:** explicitly name X and explain what its `Chosen` got wrong (or what changed underneath it).
 
 Common patterns:
@@ -227,13 +241,16 @@ Synthesis files are optional, written at most once per batch. They cover the con
 
 ```markdown
 ---
-id: <integer>
+id: <ULID string>
 slug: <namespaced kebab-case>
 title: <one line>
 status: accepted
 tags: [..., synthesis, ...]
 edges:
-  synthesizes: [<id>, <id>, ...]
+  depends-on: []
+  supersedes: []
+  informs: []
+  synthesizes: [<ULID>, <ULID>, ...]
 spawns-threads:
   - topic: ...
     why-deferred: ...

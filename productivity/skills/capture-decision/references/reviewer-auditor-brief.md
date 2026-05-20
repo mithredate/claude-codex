@@ -41,7 +41,7 @@ This check is `discrepancy`-grade — not advisory. The draft must be re-written
 
 The archive's `depends-on` and `informs` edges should point at **live** decisions wherever possible. Two patterns to distinguish:
 
-**Legitimate:** "A supersedes B" → "A depends-on B" is fine. A successor often builds on its predecessor's framing even while retiring its `Chosen`. The combination `supersedes: [B]` + `depends-on: [B]` on decision A is normal — A inherits B's setup and replaces B's resolution.
+**Legitimate:** "A supersedes B" → "A depends-on B" is fine. A successor often builds on its predecessor's framing even while retiring its `Chosen`. The combination `supersedes: [<ULID-of-B>]` + `depends-on: [<ULID-of-B>]` on decision A is normal — A inherits B's setup and replaces B's resolution.
 
 **Suspect (`discrepancy`):** "C depends-on B" where B is `superseded` by D and C is **not** the supersession of B. In this case, C likely depends on D's live principle, not on B's retired framing. The capture agent should re-target C's `depends-on` to D (or to the live successor in the chain).
 
@@ -83,33 +83,44 @@ A near-duplicate with no resolution declared → `discrepancy` (one of the four 
 For each declared `depends-on` and `informs` edge in a new decision:
 
 - Does the body of the new decision reference the target's substance?
-- A declared `depends-on: [X]` should be reflected in the `Rationale` or `Question` — the new decision should explain how it builds on X.
+- A declared `depends-on: [<ULID-of-X>]` should be reflected in the `Rationale` or `Question` — the new decision should explain how it builds on X.
 
 An edge declared but not justified by the body → `blocking` (the edge is wrong, or the body is missing the justification).
 
 An edge **not declared** that should be (the body clearly builds on decision Z but Z isn't in `depends-on`) → `blocking`.
 
-### 6. Supersede sanity
+### 6. Cross-archive edge check — `blocking`
 
-For each `supersedes: [X]` declared in a new decision:
+Edges are **intra-archive only**. Every ULID in an edge field must resolve to a file inside `<worktree>` (the current archive's checkout). For each edge ULID in each new file:
+
+- Does `ls <worktree>/decisions/<ULID>-*.md <worktree>/synthesis/<ULID>-*.md 2>/dev/null` return at least one file?
+- If no, the ULID does not exist in this archive. Either it is a typo (the capture agent meant a different ULID) or it is a reference to another archive's decision (which is forbidden as a structured edge).
+
+A cross-archive ULID in any edge field → `blocking`. Such references belong in the body prose (`Rationale` or `Note`), never as a structured edge. The capture agent's next round must either remove the edge and move the reference into prose, or correct the typo.
+
+Note: this overlaps with the Validator's "edge target existence" check; both flag the same defect from different angles (Validator: mechanical existence; Auditor: archive-boundary semantics). Flag it independently — the reinforcement is intentional.
+
+### 7. Supersede sanity
+
+For each `supersedes: [<ULID-of-X>]` declared in a new decision:
 
 - Does the new decision actually replace X's `Chosen`? Or is it about a different fork that touches X tangentially?
 - A supersession requires the new decision's `Chosen` to subsume or replace X's `Chosen`. If the new decision is about something different, `supersedes` is wrong — use `informs` or `depends-on` instead.
 
 A supersession that doesn't actually subsume → `blocking`.
 
-### 7. Synthesis coverage
+### 8. Synthesis coverage
 
 If a synthesis file is in the batch:
 
 - The `synthesizes` edges should cover **every** decision in the batch. Missing coverage (a batch decision not listed in `synthesizes`) → `discrepancy` (the synthesis doesn't integrate the full batch).
 - The synthesis should not `synthesizes` decisions outside the batch (those are separately-captured already). Off-batch entries → `blocking`.
 
-### 8. Supersede chain integrity across the archive
+### 9. Supersede chain integrity across the archive
 
 After the batch lands, walk the archive's supersede chain:
 
-- For every decision in the archive with `status: superseded`, there should exist a successor declaring `supersedes: [that-id]`. Orphaned `superseded` (no successor anywhere) → `blocking`.
+- For every decision in the archive with `status: superseded`, there should exist a successor declaring `supersedes: [that-ULID]`. Orphaned `superseded` (no successor anywhere) → `blocking`.
 - Cycles in `supersedes` → `blocking` (impossible by construction unless the capture agent made a serious error).
 - A chain `A → B → C` (C supersedes B, B supersedes A) is legitimate; all three statuses must be consistent (A and B `superseded`, C `accepted`).
 

@@ -1,8 +1,10 @@
 # Quality Reviewer brief — write-up and triple-filter review
 
-Spawned as `general-purpose` (reads drafts + transcript deeply, applies the triple-filter, evaluates synthesis coherence). One of three parallel reviewers; non-overlapping checklist with Validator and Archive Auditor.
+Spawned as `general-purpose` (reads drafts + transcript deeply, applies the triple-filter, evaluates synthesis coherence). One of three parallel V/A/Q reviewers; non-overlapping checklist with Validator and Archive Auditor.
 
-The Quality Reviewer enforces **write-up quality** and the **triple-filter**. It is the last line of defense against thin, declarative, or hollow decisions making it into the archive. It also covers synthesis coherence — synthesis review is folded into Quality, not a separate fourth reviewer.
+The Quality Reviewer enforces the **triple-filter**, **structural substance** (real questions, articulated rationale, surfaced assumptions), **transcript-substance faithfulness** (does the write-up reflect what the session decided), and **synthesis coherence**. It is the last line of defense against thin, declarative, or hollow decisions making it into the archive. Synthesis review is folded in here, not a separate reviewer.
+
+**Prose tightening is out of scope for this reviewer.** That is the Concision Reviewer's mandate (Step 4.5, post-V/A/Q). Do not flag verbose paragraphs, hedging language, or sentence-length issues — those will be handled in a dedicated post-pass. Limit `quality_note` to substance-adjacent advisory observations (e.g., a thread with a vague `revisit-trigger`), not stylistic ones.
 
 ## Inputs
 
@@ -55,22 +57,19 @@ Tags should aid grep-based retrieval. Quality-check the tags:
 
 Tag-quality findings are all advisory (`nit`) unless tags are missing entirely (which the Validator catches as `blocking`).
 
-### Voice and length
+### Section balance (not prose style)
 
-The decision should read like the existing archive's voice — clear, direct, no hedging unless flagging real uncertainty. Length should match the substance (a one-paragraph `Chosen` and a six-paragraph `Rationale` is unbalanced; usually `Rationale` is the longest section).
+`Chosen` and `Rationale` lengths should match the substance — a one-paragraph `Chosen` against a six-paragraph `Rationale` is the normal shape. Severe imbalance that signals missing substance (a one-line `Rationale`, an empty section, a `Chosen` longer than `Rationale`) is structural, not stylistic — flag it under the relevant section rule above as `blocking`.
 
-Voice findings live in `quality_note` — they are **advisory only**. The capture-decision verdict aggregator does **not** force another round on `quality_note` findings. The Quality Reviewer can flag prose-tightening opportunities, but the loop will not iterate on them.
+**Do not flag prose style here.** Voice, paragraph length, hedging, repetition, sentence-tightening — all of that is the Concision Reviewer's mandate (Step 4.5). If you find verbose prose, ignore it; the post-pass will handle it. Stuffing `quality_note` with prose nits would either gate the loop (it doesn't, but it would waste reviewer cycles) or be silently ignored.
 
-This is the genuine advisory tier. Use it for: tone, paragraph length, hedging language, repetition, voice mismatches. Do not use it for: missing sections (that's `blocking`), thin rationale (that's `blocking`), empty alternatives (that's `blocking`).
+`quality_note` is reserved for **substance-adjacent advisory** findings: a thread with a vague `revisit-trigger`, an `Assumptions` list that surfaces only obvious priors, a `Note` section that references something not in the archive. The capture-decision verdict aggregator does **not** force another round on `quality_note` findings.
 
 ## Synthesis checklist (when a synthesis file is in the batch)
 
 Applied in addition to the per-decision checks above. Synthesis cadence (~1 per session) does not justify a separate reviewer; instead, Quality's checklist extends.
 
-### Coverage
-
-- `synthesizes` edges cover **every** new decision in the batch. Missing coverage → `blocking` ("synthesis incomplete — does not cover all batch decisions").
-- The Auditor also checks this; if both flag it, that's fine — the findings reinforce each other.
+**Out of scope here: synthesis-decision coverage.** Whether the synthesis's `synthesizes` edges cover every batch decision is an **archive-integration** concern, owned by the Archive Auditor (see `reviewer-auditor-brief.md` §8). Do **not** check coverage in Quality; doing so would duplicate the Auditor's finding and confuse the field-placement rules. Quality's synthesis remit is **internal coherence** — does the synthesis hold together as a narrative? — not coverage.
 
 ### Spawns-threads substance
 
@@ -96,8 +95,8 @@ A synthesis with a clear thesis but minor coherence gaps (one decision feels tac
 ## Field placement rules — strict
 
 - **`blocking`** — concrete defects in the write-up plus **all triple-filter failures**. Examples: missing sections, thin rationale, empty alternatives, supersede without rationale, synthesis-without-thesis, thread shape-without-substance, **and any triple-filter fail (hard-to-reverse | surprising | real-trade-off)**.
-- **`quality_note`** — voice, style, prose tightening, hedging, paragraph length, sub-substantive thread fields. **Advisory only — does NOT force another round.**
-- **`nit`** — minor stylistic findings (tag count, tag boilerplate). Never gates.
+- **`quality_note`** — substance-adjacent advisory findings (sub-substantive thread fields, thin assumptions, dangling note references). **Advisory only — does NOT force another round.** **Not** for prose style — that's Concision's job.
+- **`nit`** — minor structural findings (tag count, tag boilerplate, empty `Assumptions` when one likely applies). Never gates. **Not** for prose style.
 
 The Quality Reviewer does **not** produce `discrepancy` findings — that field is the Archive Auditor's. Emit it as an empty array.
 
@@ -130,4 +129,4 @@ Rules:
 - For triple-filter failures (which live in `blocking`), prefix the finding with `[triple-filter: <which-of-the-three>]` so the capture agent and main can spot them.
 - If the transcript cannot be read, emit a `blocking` entry naming the impediment. Do not fabricate a clean output on the triple-filter — it cannot be evaluated without the transcript.
 
-**Reminder to the reviewer:** `quality_note` is the genuinely advisory tier. It exists so you can flag prose-tightening without gating the loop. Do not stuff `quality_note` with findings that should be `blocking`. Conversely, do not promote stylistic preferences to `blocking` — the gate is the triple-filter and the structural checks above, not voice.
+**Reminder to the reviewer:** `quality_note` is the substance-adjacent advisory tier. It exists so you can flag sub-substantive concerns (thin assumptions, vague triggers, dangling references) without gating the loop. Do not stuff it with prose-style findings — those belong to the Concision Reviewer in Step 4.5 and are out of scope here. Conversely, do not promote stylistic preferences to `blocking` — the gate is the triple-filter and the structural checks above, not voice. The Quality / Concision split is intentional: write-up substance vs prose tightness are separately evaluated, separately scoped.

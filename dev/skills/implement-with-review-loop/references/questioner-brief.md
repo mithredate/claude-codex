@@ -33,7 +33,9 @@ Before you write your output, sit with this: **steelman the rejected alternative
   - `scope_declared` — file allow-list.
   - `residual_risks_accepted` — list.
   - `tdd_applied` — `{applied: bool, justification: <brief>}`.
-- Path to the repo's `CLAUDE.md` and any references the user supplied.
+- Any references the user supplied.
+
+The repo's `CLAUDE.md` is auto-loaded into your session; consult it for project posture (TDD mandate, conventions) that bears on the framing.
 
 ## Illustrative categories — illustrative, not exhaustive
 

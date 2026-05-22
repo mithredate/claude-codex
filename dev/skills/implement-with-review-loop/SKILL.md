@@ -18,8 +18,10 @@ Deliver a code change through a worktree-isolated implementer subagent and four 
 
 ## What the references contain
 
-Sub-agents do not inherit the skill directory automatically. Briefs pass these paths explicitly.
+Sub-agents do not inherit the skill directory automatically. Main passes these paths explicitly in the spawn prompt.
 
+- `references/recall-brief.md` — codebase orientation digest, runs once; spawn as `Explore`.
+- `references/implementer-brief.md` — produces the change; spawn as `general-purpose`.
 - `references/validator-brief.md` — mechanical compliance reviewer; spawn as `Explore`.
 - `references/codebase-auditor-brief.md` — fit-with-surrounding-code reviewer; spawn as `general-purpose`.
 - `references/questioner-brief.md` — framing-and-decision reviewer; spawn as `general-purpose`. Sole authority over `discrepancy`.
@@ -46,31 +48,17 @@ Before spawning anything:
 
 All subsequent reads, writes, `git diff`, `git add`, and `git commit` happen **inside the worktree** — never in the parent repo directly. All `git diff` calls use the **single-ref** form `git diff <base_sha>` (run with `git -C "$WORKTREE" diff "$base_sha"`) — committed, staged, and unstaged changes since base. This is the diff invariant; reviewers always see the cumulative change, never the per-round delta.
 
-## Worker brief contract — what main passes the implementer
+## Implementer contract
 
-Main passes **raw context plus infrastructure**, not pre-chewed decisions. Specifically:
+The implementer's full contract — inputs, output schema, boundaries, escape hatches — lives in `references/implementer-brief.md`. Before spawning, main reads the brief and constructs the spawn prompt accordingly.
 
-- `user_request` — verbatim user phrasing. No paraphrase.
-- `codebase_recall` — the digest from the recall step below; pointers only.
-- `workspace` — `$WORKTREE`.
-- `base_sha` — for the diff invariant.
-- Paths to relevant references the user supplied or that the repo's CLAUDE.md points at.
+**What main does not pass:** `rationale`, `scope`, `acceptance_criteria`, `chosen approach`, `rejected alternatives`, `root cause hypothesis`. These are the implementer's job to derive. If the user dictated any of them, the dictation is inside `user_request` and the implementer picks it up there.
 
-Main does **not** pass: `rationale`, `scope`, `acceptance_criteria`, `chosen approach`, `rejected alternatives`, `root cause hypothesis`. These are the implementer's job to derive. If the user dictated any of them, the dictation is inside `user_request` and the implementer picks it up there.
+## Codebase recall
 
-The implementer is also told to **read the repo's CLAUDE.md** for test/lint/typecheck commands, TDD posture, and project conventions. This skill says nothing about TDD specifically — TDD posture is a project-level concern the implementer reads from CLAUDE.md.
+Before round 1, spawn a single recall sub-agent per the contract in `references/recall-brief.md`. Main passes the resulting digest verbatim to every implementer spawn (round 1 and every retry) — the set of relevant files does not change between rounds; re-running would waste tokens.
 
-## Codebase recall — one-shot, pointers only
-
-Before round 1, spawn a single **recall sub-agent** as `Explore` (read-only, fast, pattern-matching). The recall agent returns a tight digest (≤25 lines) of:
-
-- `relevant_paths` — file paths likely to matter, each with a one-line "why" annotation.
-- `conventions` — test command, lint command, typecheck command (read from CLAUDE.md), plus style notes the agent observed.
-- `search_hints` — additional pointers (e.g., "auth symbol appears in 14 files; most relevant cluster is `lib/auth/`").
-
-**Pointers, not content.** The digest is a search-index hint, not a knowledge dump. The implementer Reads files itself on demand. The recall runs **once** and the same digest is passed to every implementer spawn (round 1 and every retry). Set of relevant files does not change between rounds; re-running would waste tokens.
-
-**Silent-failure mode.** If the recall sub-agent returns nothing or content that does not contain at least one digest-shaped line, set `codebase_recall` to an empty digest and proceed. Surface the degradation in the final report. Do not re-spawn within the same session.
+**Silent-failure mode.** If the recall sub-agent returns empty content, an explicit refusal, or only an error message, set `codebase_recall` to an empty digest and proceed. Surface the degradation in the final report. Do not re-spawn within the same session.
 
 ## Per-round loop (hard cap: 3 rounds)
 
@@ -78,47 +66,14 @@ Each round = one implementer spawn followed by four parallel reviewer spawns. Re
 
 ### A. Implementer subagent (round 1 and every retry)
 
-Spawn one implementer (`general-purpose`) with:
+Spawn one implementer per the contract in `references/implementer-brief.md`. Round-N>1 adds two things to the round-1 inputs:
 
-- **Round-1 inputs (always — same every round):**
-  - `user_request`, `codebase_recall`, `workspace = $WORKTREE`, `base_sha`, references the user supplied.
-  - Instruction to read the repo's `CLAUDE.md` for test/lint/typecheck commands and TDD posture.
+- The aggregated reviewer findings JSON from the prior round.
+- **Surgical-fix mode directive (verbatim):**
 
-- **Round-N>1 inputs (additions, not substitutions):**
-  - The previous full cumulative diff (`git diff <base_sha>` at the end of the prior round).
-  - The aggregated reviewer findings JSON from the prior round.
-  - **Surgical-fix mode directive (verbatim):**
+  > Surgical fix mode — you operate on the same worktree across retries. Inspect the current cumulative state via `git -C "$WORKTREE" diff "$base_sha"` before editing. Address every `blocking` and `discrepancy` item from the verdict; if neither is present in this round's findings, address `quality_note` items. Never address `nit`. Do not rewrite working code or expand scope. If you believe a finding requires a larger restructure than the prior approach supports, return `plan_broken` with evidence rather than silently expanding.
 
-    > Surgical fix mode — you operate on the same worktree across retries. The prior diff is shown to you as context for what is already in place, not as a patch to apply. Address every `blocking` and `discrepancy` item from the verdict without regressing unchanged regions. Do not rewrite working code or expand scope. If you believe a finding requires a larger restructure than the prior approach supports, return `plan_broken` with evidence rather than silently expanding.
-
-- **Boundaries:**
-  - All writes happen inside `$WORKTREE`. Touching anything outside the worktree is a violation that the Validator will catch.
-  - Do not add new runtime dependencies without flagging in `residual_risks_accepted`.
-
-- **Escape hatch — `plan_broken` / `setup_blocked`.** If the implementer discovers the plan itself is wrong (the approach won't compile, the root-cause diagnosis is incorrect, a hidden constraint contradicts the approach, the failing test it writes does not actually fail), it returns `status: "plan_broken"` with evidence. If the test harness cannot exercise the relevant module in isolation despite reasonable effort, it returns `status: "setup_blocked"` rather than mocking the world. **Do not iterate** when the implementer returns either code — escalate to the user with the evidence.
-
-- **Required output schema:**
-
-  ```json
-  {
-    "status": "complete" | "plan_broken" | "setup_blocked",
-    "diff": "<output of `git -C $WORKTREE diff <base_sha>` — full cumulative change; empty if status != complete>",
-    "new_or_modified_tests": ["<test identifier in the runner's format>", "..."],
-    "commands_run": ["<test cmd>", "<lint cmd>", "<typecheck cmd>"],
-    "rationale_out": {
-      "problem_understanding": "<what the worker took the problem to be>",
-      "root_cause":            "<for fixes; 'n/a' for features/chores>",
-      "approach_chosen":       "<one paragraph>",
-      "alternatives_rejected": [{"alternative": "...", "reason": "..."}, "..."],
-      "scope_declared":        ["<file path>", "..."],
-      "residual_risks_accepted": ["...", "..."],
-      "tdd_applied":           {"applied": true, "justification": "<brief>"}
-    },
-    "blocker_evidence": "<only when status != complete: what you tried, what failed, why it shows the plan/setup is broken>"
-  }
-  ```
-
-`scope_declared` feeds the Validator (it checks the diff stays within this allow-list). The rest of `rationale_out` feeds the Questioner.
+When the implementer returns `status: "plan_broken"` or `"setup_blocked"`, **do not iterate** — exit the loop and escalate to the user with the implementer's `blocker_evidence`. The worktree is left dirty (no commit) for the user to inspect.
 
 ### B. Reviewer fan-out (every round)
 
@@ -126,25 +81,19 @@ Spawn four reviewers in parallel against the current state of `git -C $WORKTREE 
 
 - **Validator** (`Explore`) — brief: `references/validator-brief.md`.
 - **Codebase Auditor** (`general-purpose`) — brief: `references/codebase-auditor-brief.md`.
-- **Questioner** (`general-purpose`) — brief: `references/questioner-brief.md`. Receives `rationale_out` in full.
+- **Questioner** (`general-purpose`) — brief: `references/questioner-brief.md`. Sole authority over `discrepancy`.
 - **Craft Reviewer** (`general-purpose`) — brief: `references/craft-reviewer-brief.md`.
 
-Each reviewer receives:
+**Each brief is the canonical contract for its reviewer's inputs and output schema.** Before spawning, main reads the brief, constructs the spawn prompt with the inputs the brief lists, and passes the brief's absolute path so the reviewer can re-load it on startup.
 
-- `base_sha`
-- `workspace = $WORKTREE`
-- Paths to the repo's `CLAUDE.md` and any references the user supplied
-- For the Questioner: the full `rationale_out` block from the implementer
-- For the Validator: `scope_declared` from `rationale_out` (the diff allow-list)
+All four briefs share a four-array output schema used for verdict aggregation:
 
-Reviewers return strict JSON. The field schema is **fixed at four arrays across all four reviewers**; some reviewers fill only a subset (the rest are empty arrays):
+- `blocking` — concrete defect with `file:line` evidence. Any reviewer may populate. Gates the loop.
+- `discrepancy` — structural framing problem. Questioner only. Gates the loop.
+- `quality_note` — addressable craft / fit concern. Codebase Auditor, Questioner, Craft Reviewer may populate. Gates the loop only when no `blocking` or `discrepancy` is present.
+- `nit` — minor. Never gates.
 
-- `blocking` — concrete defect in the diff with `file:line` evidence. **Any reviewer may populate.** Forces another round.
-- `discrepancy` — structural problem requiring re-think (right problem? right root cause? right approach vs the rejected alternatives?). **Questioner only.** Forces another round.
-- `quality_note` — advisory; never gates. Codebase Auditor, Questioner, Craft Reviewer may populate.
-- `nit` — minor; never gates. Any reviewer may populate.
-
-Reviewers do **not** vote: any `status` or `verdict` field they emit is treated as ignored courtesy. Main computes the loop verdict from field occupancy.
+Reviewers do **not** vote: any `status` or `verdict` field they emit is ignored. Main computes the loop verdict from field occupancy.
 
 ### C. Verdict aggregation (mechanical — main applies, reviewers never vote)
 
@@ -152,46 +101,42 @@ After collecting all four reviewer JSON outputs, apply this rule **in order**:
 
 1. **Malformed JSON** — if any reviewer's output is malformed (missing required field, wrong type, non-parseable), re-spawn that reviewer once with the same brief plus a stricter "your previous output was malformed; conform to the schema" preamble. If the second attempt is still malformed, **escalate to the user**. Verdict-validation re-spawns do not count against the 3-round cap. Do not re-spawn the implementer on a reviewer-validation failure — the reviewer is the broken component.
 
-2. Once all four outputs are valid, compute the verdict from field occupancy:
+2. Once all four outputs are valid, compute the verdict from field occupancy in priority order:
    - Any `blocking` finding (from any reviewer) → **adjust** if rounds remain, else **escalate**.
    - Any `discrepancy` finding (Questioner only) → **adjust** if rounds remain, else **escalate**.
-   - Only `quality_note` and/or `nit` findings, or no findings at all → **pass** → exit loop and proceed to commit.
+   - Any `quality_note` finding (and no `blocking`/`discrepancy` this round) → **adjust** if rounds remain, else **pass** (quality is not a correctness gate; do not escalate).
+   - Only `nit` findings, or no findings at all → **pass** → exit loop and proceed to commit.
+
+   Priority gating protects the round budget for correctness: the implementer addresses the highest-priority finding type in each round, so quality iteration never starves a real `blocking`. If a craft / fit concern is severe enough to block, the reviewer raises it as `blocking` instead of `quality_note` — the brief categories allow that re-classification.
 
 ### D. Iterate
 
 - **pass** → commit and report (next section).
 - **adjust** → spawn a fresh implementer (step A) with round-N>1 inputs (including the aggregated findings and the surgical-fix directive). Then spawn the four reviewers in parallel (identical brief — no awareness of round number).
 - **escalate** → exit the loop. Commit current state in the worktree with a `Review-Status` trailer (see next section) and report to the user with un-addressed findings labeled. The user decides next steps.
-- **Hard cap: 3 `adjust` rounds.** After round 3, exit the loop regardless of verdict. If outstanding `blocking` or `discrepancy` remain, this is the `escalate` branch.
+- **Hard cap: 3 `adjust` rounds.** After round 3, exit the loop regardless of verdict. If outstanding `blocking` or `discrepancy` remain, this is the `escalate` branch. If only `quality_note` remains, this is `pass` — the quality findings travel to the final report but do not block commit.
 
 ## Commit, branch, and report
 
-When the loop converges (`pass` verdict OR 3-round cap exhausted OR escape hatch from worker), the implementer commits **inside the worktree** on the per-task branch. Single commit per task:
+On `pass` verdict or 3-round cap exhaustion, **main creates a single conventional-commits commit** in the worktree on the per-task branch, using the implementer's last `rationale_out` to construct the message. The message must include this trailer (non-standard; tooling can't infer it):
 
 ```
-cd "$WORKTREE"
-git add -A
-git commit -m "<message below>"
+Refs: <branch-name>
 ```
 
-Commit message structure (conventional commits — blank lines between subject, body, and trailers are required for `git interpret-trailers` and downstream tooling to parse correctly):
+(`<branch-name>` is `$BRANCH` verbatim — the `implement/<timestamp>-<short-ulid>-<slug>` set up in pre-flight.)
 
-```
-<type>(<scope-short>): <one-line summary>
+On escape hatch (`plan_broken` / `setup_blocked`), no commit is produced; the worktree is left dirty for the user to inspect.
 
-- <bullet of change>
-- <bullet of change>
-
-Refs: implement-<YYYYMMDD-HHMMSS>-<short-ulid>-<slug>
-```
-
-`<type>` is inferred from `user_request` and the diff: `fix`, `feat`, `refactor`, `chore`, `docs`, `test`. If cap-exhausted with outstanding findings, append a trailer block (preceded by a blank line):
+If cap-exhausted with outstanding `blocking` or `discrepancy`, append a second trailer:
 
 ```
 Review-Status: unresolved (<n> blocking, <m> discrepancy)
 ```
 
-The commit lands on the `implement/<timestamp>-<short-ulid>-<slug>` branch only. **Do not merge to main. Do not push. Do not remove the worktree.** The user's manual merge is the gate.
+Outstanding `quality_note` does not produce a `Review-Status` trailer — quality findings travel in the report, not in the commit.
+
+**Do not merge to main. Do not push. Do not remove the worktree.** The user's manual merge is the gate.
 
 After committing, main **reports to the user**:
 
@@ -199,35 +144,10 @@ After committing, main **reports to the user**:
 - **Branch name** — `$BRANCH`.
 - **Commit SHA(s)** — for the user to reference.
 - **Diff summary** — file count, line additions/deletions, list of changed paths.
-- **Final reviewer verdicts** — the four reviewers' findings, summarised. Outstanding `blocking` and `discrepancy` (if cap-exhausted) are surfaced prominently.
-- **Worker `rationale_out`** — the worker's framing of the problem, the approach chosen, alternatives rejected, scope declared, residual risks accepted, TDD posture.
+- **Final reviewer findings** — all four reviewers' findings across all four field types (`blocking`, `discrepancy`, `quality_note`, `nit`), grouped by reviewer. Outstanding `blocking` and `discrepancy` (if cap-exhausted) are surfaced prominently; `quality_note` and `nit` follow.
+- **Implementer `rationale_out`** — the implementer's framing of the problem, the approach chosen, alternatives rejected, scope declared, residual risks accepted, TDD posture.
 - **Suggested merge command** — e.g., `gh pr create --base main` from the worktree, or `git checkout main && git merge <branch>` in the parent repo.
 - **Degraded-input note** — if codebase recall returned degraded output, surface a one-line warning.
 
-Mid-loop escalations (Questioner `discrepancy` that exhausts the cap, `plan_broken`, `setup_blocked`) surface to the user immediately with the same report shape — they do **not** wait for merge time. For `plan_broken` / `setup_blocked`, no commit is produced (the diff may be empty or partial); the worktree is left dirty for the user to inspect.
+Escalations (cap-exhausted with outstanding findings, `plan_broken`, `setup_blocked`) use the same report shape, surfaced immediately — they do **not** wait for merge time.
 
-## Escape hatches and edge cases
-
-- **`plan_broken` from worker.** Exit loop. Surface to user with the agent's evidence; worktree left dirty (no commit). The worker cannot fix a broken plan by retrying.
-- **`setup_blocked` from worker.** Exit loop. Surface to user with the agent's evidence; worktree left dirty (no commit). The test harness cannot be made to exercise the relevant module in isolation.
-- **Malformed reviewer JSON.** Re-spawn that reviewer once; escalate to user on second malformed output. Does not count against the 3-round cap. Do not re-spawn the implementer — the reviewer is the broken component.
-- **3-round cap exhaustion with outstanding `blocking` or `discrepancy`.** Commit anyway with the `Review-Status` trailer; report to user with findings labeled. The user decides whether to merge, iterate further (by re-invoking), or take over manually.
-- **User-supplied dictation in `user_request`.** Passed through verbatim. The implementer reads it and treats it as part of its inputs. Main does not pre-digest it.
-- **Implementer writes outside `$WORKTREE`.** The Validator catches this as `blocking`. Main does not enforce it directly — the filesystem boundary plus the Validator's check together form the guarantee.
-- **Codebase recall returns malformed/empty/errored output.** Set `codebase_recall` to empty and proceed; surface the degradation in the final report. Do not re-spawn inside the same session.
-
-## Borrowed disciplines (inline reference)
-
-From `productivity/skills/capture-decision/` — the following patterns transfer verbatim in spirit, adapted for the code-change domain:
-
-- **Pre-flight clean-tree check via dedicated worktree.** All in-flight changes live in a per-task worktree off `base_sha`. The parent repo's working tree is never touched. Discard = `git worktree remove --force`.
-- **Single-ref diff invariant.** `git diff <base_sha>` only. Never the per-round delta. Reviewers always evaluate the cumulative change.
-- **Stateless reviewers.** Each reviewer spawn re-derives the verdict from scratch. No awareness of round number. Prevents drift and prevents regressions in previously-clean regions from slipping through.
-- **Mechanical verdict aggregation.** Reviewers do not vote. Main computes the loop verdict from field occupancy across all four reviewer JSONs.
-- **Verdict validation.** Re-spawn once on malformed reviewer JSON; escalate on second failure. The reviewer is the broken component, not the change.
-- **Hard cap with escalation, branch-and-report exit.** Three rounds. Cap exhaustion is not failure — it routes to the user with the current state preserved on disk in the worktree. The user's manual merge is the gate.
-- **Additive inputs on retry.** Round-N>1 inputs add to round-1 inputs; they do not replace them. The codebase recall digest persists across rounds.
-- **Escape hatch from the worker.** `plan_broken` and `setup_blocked` are the implementer's equivalents of capture's `no_decisions_found` / `scope_unsalvageable`. Do not iterate when the plan itself is broken.
-- **Surgical-fix mode directive.** Verbatim in the round-N>1 brief. Prevents oscillation between implementation strategies.
-
-The pattern is borrowed inline, not factored. Factoring waits for a third instance of the worker-plus-reviewer loop to appear.

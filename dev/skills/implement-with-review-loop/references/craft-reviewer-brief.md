@@ -19,7 +19,8 @@ Before you write your output, sit with this: **read this code as if you're inher
 - `base_sha` — the commit before the implementation started.
 - `workspace` — `$WORKTREE`.
 - Diff command: `git -C $WORKTREE diff $base_sha` — full cumulative change since base.
-- Path to the repo's `CLAUDE.md` — read for style notes the project explicitly cares about.
+
+The repo's `CLAUDE.md` is auto-loaded into your session; consult it for style notes the project explicitly cares about.
 
 ## Illustrative categories — illustrative, not exhaustive
 

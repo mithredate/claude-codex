@@ -1,235 +1,233 @@
 ---
 name: implement-with-review-loop
 description: >-
-  Implement code changes — fixes, features, refactors, or substantive chores — under a TDD + review loop. Trigger when the user has approved a plan and asked for implementation, or uses phrases like "implement X", "add feature Y", "fix bug Z", "refactor M", "build out the auth flow". Use this skill even when the user does not explicitly ask for review — review is the default for substantive changes. Do NOT trigger for read-only tasks (analysis, exploration, summarization), trivial one-line edits the user explicitly asks to apply directly, or work in a repo with no runnable test command.
+  Implement code changes — fixes, features, refactors, or substantive chores — under a worktree-isolated implement-then-review loop. Trigger when the user has approved a plan and asked for implementation, or uses phrases like "implement X", "add feature Y", "fix bug Z", "refactor M", "build out the auth flow". Use this skill even when the user does not explicitly ask for review — review is the default for substantive changes. Do NOT trigger for read-only tasks (analysis, exploration, summarization) or trivial one-line edits the user explicitly asks to apply directly.
 ---
 
 # Implement with review loop
 
-Deliver a code change using an evaluator-optimizer loop with two specialized subagents (implementer + reviewer) and a hard iteration cap. Read this whole file before spawning the first subagent.
+Deliver a code change through a worktree-isolated implementer subagent and four parallel reviewers, with a hard iteration cap and a branch-and-report exit (no auto-merge). Read this whole file before spawning the first subagent.
 
-This skill depends on the `tdd` skill being available. If it is not, stop and tell the user.
+## Shape at a glance
 
-## The unit of work: `work_item`
+- A **per-task git worktree** is mandatory. Main creates it; the implementer writes inside it. Main does not edit code outside the worktree. This is a filesystem boundary that physically prevents main from bypassing the implementer.
+- A **one-shot codebase recall** (pointers, not content) runs before round 1 and is passed verbatim to every implementer spawn.
+- Each round = one **implementer spawn** followed by **four reviewers in parallel** (Validator, Codebase Auditor, Questioner, Craft Reviewer).
+- The **verdict is mechanical** — main computes it from field occupancy across the four reviewer JSONs. Reviewers do not vote.
+- On `pass` or 3-fail cap or escape hatch, the implementer **commits inside the worktree on the per-task branch and stops**. Main reports to the user; **the user's manual merge is the gate**.
 
-This skill applies to any **work item**: a fix, feature, refactor, or substantive chore. A work item is a unit you can describe with:
+## What the references contain
 
-- `id` — stable label (e.g., `BUG-417`, `FEAT-auth-magic-link`)
-- `type` — `fix` | `feature` | `refactor` | `chore`
-- `summary` — one-line statement of the change
-- `scope` — for `fix`/`refactor`/`chore`: an explicit file/module allow-list. For `feature`: a directive like "new files allowed under `<dir>`".
-- `acceptance_criteria` — what the change must produce; observable, not aspirational
-- `rationale` — the upstream design context (see below). Required.
+Sub-agents do not inherit the skill directory automatically. Briefs pass these paths explicitly.
 
-If any of these are missing or ambiguous, **stop and ask the user before spawning any subagent**. Do not infer scope or rationale silently.
-
-### `rationale` — what it must contain
-
-The reviewer cannot evaluate design soundness without seeing the upstream thinking. Capture, in 5–15 lines:
-
-- The problem in one sentence (what user-visible symptom or requirement).
-- The root cause as currently understood, if applicable.
-- Alternatives considered and explicitly rejected (one line each, with the reason).
-- The chosen approach in one sentence.
-- Residual risks the user has explicitly accepted ("we know X edge case is unhandled; that is intentional").
-
-Without explicit rejection notes, a creative reviewer will manufacture false positives flagging tradeoffs that were already decided.
-
-## Commands you must confirm up front
-
-Before the loop runs, identify and confirm:
-
-- `test` — full-suite command (e.g., `pnpm test`, `pytest -q`, `flutter test`)
-- `lint` — e.g., `pnpm lint`, `ruff check .`, `flutter analyze`
-- `typecheck` — e.g., `pnpm tsc --noEmit`, `mypy .` (often subsumed by `flutter analyze`)
-
-If a project lacks any of these, say so and either (a) ask the user how to substitute, or (b) skip that DoD criterion and note it in the commit message. Do not invent commands.
-
-## Diff invariant (applies to every subagent every iteration)
-
-The `diff` field, wherever it appears in this skill, is **always produced by `git diff <base_sha>`** (no second ref), where `<base_sha>` is the work item's base commit captured at pre-flight. This single-ref form deliberately captures everything since base — committed, staged, and unstaged — so the diff represents the full cumulative change that would land if we committed right now. It is never the incremental diff since the last iteration.
-
-The intended workflow is **uncommitted accumulation**: the implementer leaves changes in the working tree across rounds, and step D produces the single commit at the end. If the implementer chooses to commit intermediate snapshots during its own work (e.g., for safety), the `git diff <base_sha>` form still captures them, but step D's single-commit-per-work-item rule still holds and may require a squash on the implementer's side before reporting the final diff.
-
-The reviewer must always evaluate the whole change against DoD, never just the delta from the prior round.
+- `references/validator-brief.md` — mechanical compliance reviewer; spawn as `Explore`.
+- `references/codebase-auditor-brief.md` — fit-with-surrounding-code reviewer; spawn as `general-purpose`.
+- `references/questioner-brief.md` — framing-and-decision reviewer; spawn as `general-purpose`. Sole authority over `discrepancy`.
+- `references/craft-reviewer-brief.md` — code-craft-on-its-own-terms reviewer; spawn as `general-purpose`.
 
 ## Pre-flight
 
-Before spawning anything, capture `<base_sha> = git rev-parse HEAD` for the diff invariant, run the **doc-scope check** (if `acceptance_criteria` involves user-visible behavior or a public-API change, `scope` must include the doc files that need updating — README, CHANGELOG, relevant docstring paths — or DoD #7 cannot be satisfied), and pause to ask the user if any input is ambiguous (an undefined `scope` or an unclear `rationale`). If the inputs name more than one work item, process them **strictly sequentially** — the diff invariant assumes a single linear writer on the working tree, so parallel execution is not supported.
+Before spawning anything:
 
-## Per-work-item loop
+1. Confirm the user's request is in scope (substantive code change; not read-only; not a one-line edit they asked to apply directly). If ambiguous, stop and ask.
+2. Capture `base_sha = git rev-parse HEAD` in the parent repo. This is the diff-invariant anchor.
+3. Capture the `user_request` **verbatim**. Do not paraphrase. If the user dictated scope, acceptance criteria, a chosen approach, or a root-cause hypothesis, that dictation lives inside `user_request` and the implementer reads it from there.
+4. Create the per-task worktree on a fresh branch:
 
-Each subagent spawn is a fresh context. State is carried by what **you** pass in, not by subagent memory.
+   ```
+   WORKTREE="<repo_root>/.claude/worktrees/implement-<YYYYMMDD-HHMMSS>-<short-ulid>-<slug>"
+   BRANCH="implement/<YYYYMMDD-HHMMSS>-<short-ulid>-<slug>"
+   git -C "<repo_root>" worktree add -b "$BRANCH" "$WORKTREE" "$base_sha"
+   ```
 
-### A. Implementer subagent (round 1, and every retry)
+   `<slug>` is a short kebab-case label main proposes from `user_request`. `<short-ulid>` is the first 6 characters of a freshly-generated ULID, to break ties on same-second concurrent invocations.
 
-Spawn one implementer with:
+5. **`.claude/` gitignore precondition.** The repo must have `.claude/` in `.gitignore` so worktree contents do not appear as untracked files in the live clone. If absent, stop and ask the user to add it (`echo '.claude/' >> .gitignore`, commit, re-invoke).
 
-- **Objective**: deliver the work item satisfying `acceptance_criteria` and the DoD below.
-- **Inputs (always — same on every round)**:
-  - `id`, `type`, `summary`, `scope`, `acceptance_criteria`, `rationale`
-  - The full Definition of Done (verbatim — see below)
-  - The work item's base commit SHA
-- **Inputs (retries only — additions, not substitutions)**:
-  - The previous full cumulative diff (`git diff <base_sha>` at the end of the prior round)
-  - The reviewer's verdict JSON from the prior round
-  - Mode directive: **"Surgical fix mode — you operate on the same worktree across retries. The prior diff is shown to you as context for what is already in place, not as a patch to apply. Address every `blocking` item from the verdict without regressing unchanged regions. Do not rewrite working code or expand scope. If you believe a blocker requires a larger restructure than the prior approach supports, return `plan_broken` with evidence rather than silently expanding."**
-- **Method**: use the `tdd` skill for the red-green-refactor discipline. The failing test must exercise `acceptance_criteria`. Two type-specific notes: for `refactor`, existing tests must stay green; if coverage of the touched area is thin, add characterization tests first to pin current behavior. For `chore` with no behavior change (doc-only, config-only, dep-bump), TDD relaxes to "the relevant smoke test or build still passes" — state the relaxation in `rationale_out`.
-- **Boundaries**:
-  - Do not modify files outside `scope`.
-  - Do not touch unrelated tests.
-  - Do not add new runtime dependencies without flagging in `rationale_out`.
-- **Escape hatch — `plan_broken` / `setup_blocked`**: if while implementing the plan you discover the plan itself is wrong (the approach won't compile, the root cause diagnosis is incorrect, a hidden constraint contradicts the approach, the test you write to demonstrate the bug doesn't actually fail), **stop and return `status: "plan_broken"`** with evidence. Similarly, if the test harness cannot pump the relevant widget/module in isolation despite reasonable effort, return `status: "setup_blocked"` rather than mocking the world. Do not paper over a broken plan to produce a passing diff.
-- **Required output** (exact shape):
+All subsequent reads, writes, `git diff`, `git add`, and `git commit` happen **inside the worktree** — never in the parent repo directly. All `git diff` calls use the **single-ref** form `git diff <base_sha>` (run with `git -C "$WORKTREE" diff "$base_sha"`) — committed, staged, and unstaged changes since base. This is the diff invariant; reviewers always see the cumulative change, never the per-round delta.
+
+## Worker brief contract — what main passes the implementer
+
+Main passes **raw context plus infrastructure**, not pre-chewed decisions. Specifically:
+
+- `user_request` — verbatim user phrasing. No paraphrase.
+- `codebase_recall` — the digest from the recall step below; pointers only.
+- `workspace` — `$WORKTREE`.
+- `base_sha` — for the diff invariant.
+- Paths to relevant references the user supplied or that the repo's CLAUDE.md points at.
+
+Main does **not** pass: `rationale`, `scope`, `acceptance_criteria`, `chosen approach`, `rejected alternatives`, `root cause hypothesis`. These are the implementer's job to derive. If the user dictated any of them, the dictation is inside `user_request` and the implementer picks it up there.
+
+The implementer is also told to **read the repo's CLAUDE.md** for test/lint/typecheck commands, TDD posture, and project conventions. This skill says nothing about TDD specifically — TDD posture is a project-level concern the implementer reads from CLAUDE.md.
+
+## Codebase recall — one-shot, pointers only
+
+Before round 1, spawn a single **recall sub-agent** as `Explore` (read-only, fast, pattern-matching). The recall agent returns a tight digest (≤25 lines) of:
+
+- `relevant_paths` — file paths likely to matter, each with a one-line "why" annotation.
+- `conventions` — test command, lint command, typecheck command (read from CLAUDE.md), plus style notes the agent observed.
+- `search_hints` — additional pointers (e.g., "auth symbol appears in 14 files; most relevant cluster is `lib/auth/`").
+
+**Pointers, not content.** The digest is a search-index hint, not a knowledge dump. The implementer Reads files itself on demand. The recall runs **once** and the same digest is passed to every implementer spawn (round 1 and every retry). Set of relevant files does not change between rounds; re-running would waste tokens.
+
+**Silent-failure mode.** If the recall sub-agent returns nothing or content that does not contain at least one digest-shaped line, set `codebase_recall` to an empty digest and proceed. Surface the degradation in the final report. Do not re-spawn within the same session.
+
+## Per-round loop (hard cap: 3 rounds)
+
+Each round = one implementer spawn followed by four parallel reviewer spawns. Reviewers are **stateless every round** — re-derived from scratch against the current `git diff <base_sha>`, never told which round it is. Carrying state would bias reviewers toward confirming a prior verdict and would let regressions in previously-clean regions slip through.
+
+### A. Implementer subagent (round 1 and every retry)
+
+Spawn one implementer (`general-purpose`) with:
+
+- **Round-1 inputs (always — same every round):**
+  - `user_request`, `codebase_recall`, `workspace = $WORKTREE`, `base_sha`, references the user supplied.
+  - Instruction to read the repo's `CLAUDE.md` for test/lint/typecheck commands and TDD posture.
+
+- **Round-N>1 inputs (additions, not substitutions):**
+  - The previous full cumulative diff (`git diff <base_sha>` at the end of the prior round).
+  - The aggregated reviewer findings JSON from the prior round.
+  - **Surgical-fix mode directive (verbatim):**
+
+    > Surgical fix mode — you operate on the same worktree across retries. The prior diff is shown to you as context for what is already in place, not as a patch to apply. Address every `blocking` and `discrepancy` item from the verdict without regressing unchanged regions. Do not rewrite working code or expand scope. If you believe a finding requires a larger restructure than the prior approach supports, return `plan_broken` with evidence rather than silently expanding.
+
+- **Boundaries:**
+  - All writes happen inside `$WORKTREE`. Touching anything outside the worktree is a violation that the Validator will catch.
+  - Do not add new runtime dependencies without flagging in `residual_risks_accepted`.
+
+- **Escape hatch — `plan_broken` / `setup_blocked`.** If the implementer discovers the plan itself is wrong (the approach won't compile, the root-cause diagnosis is incorrect, a hidden constraint contradicts the approach, the failing test it writes does not actually fail), it returns `status: "plan_broken"` with evidence. If the test harness cannot exercise the relevant module in isolation despite reasonable effort, it returns `status: "setup_blocked"` rather than mocking the world. **Do not iterate** when the implementer returns either code — escalate to the user with the evidence.
+
+- **Required output schema:**
+
   ```json
   {
     "status": "complete" | "plan_broken" | "setup_blocked",
-    "diff": "<output of `git diff <base_sha>` — full cumulative change since base, committed or uncommitted; empty if status != complete>",
-    "new_or_modified_tests": ["<test identifier in your runner's format — e.g., 'src/foo.test.ts > describe > it' (jest/vitest), 'package/file_test.go::TestName' (go), 'Tests\\FooTest::testBar' (phpunit), 'test/foo_test.dart::test description' (flutter)>", "..."],
+    "diff": "<output of `git -C $WORKTREE diff <base_sha>` — full cumulative change; empty if status != complete>",
+    "new_or_modified_tests": ["<test identifier in the runner's format>", "..."],
     "commands_run": ["<test cmd>", "<lint cmd>", "<typecheck cmd>"],
-    "rationale_out": "<≤10 lines: what changed and why; flag deps, scope notes, TDD relaxations>",
+    "rationale_out": {
+      "problem_understanding": "<what the worker took the problem to be>",
+      "root_cause":            "<for fixes; 'n/a' for features/chores>",
+      "approach_chosen":       "<one paragraph>",
+      "alternatives_rejected": [{"alternative": "...", "reason": "..."}, "..."],
+      "scope_declared":        ["<file path>", "..."],
+      "residual_risks_accepted": ["...", "..."],
+      "tdd_applied":           {"applied": true, "justification": "<brief>"}
+    },
     "blocker_evidence": "<only when status != complete: what you tried, what failed, why it shows the plan/setup is broken>"
   }
   ```
 
-If implementer returns `plan_broken` or `setup_blocked`, **do not iterate** — escalate to the user with the evidence. The implementer cannot fix a broken plan by retrying.
+`scope_declared` feeds the Validator (it checks the diff stays within this allow-list). The rest of `rationale_out` feeds the Questioner.
 
-### B. Reviewer subagent
+### B. Reviewer fan-out (every round)
 
-**The reviewer's invocation is identical on every iteration.** No "this is round N" framing, no awareness of the prior verdict, no list of "blockers we asked you to recheck." The reviewer always re-derives the verdict from scratch against the full cumulative diff. Carrying state across rounds would bias the reviewer toward confirming its prior position and would let regressions in previously-clean regions slip through.
+Spawn four reviewers in parallel against the current state of `git -C $WORKTREE diff $base_sha`. Each is stateless; no awareness of round number.
 
-Spawn one reviewer (separate context — no shared state with implementer). Pass:
+- **Validator** (`Explore`) — brief: `references/validator-brief.md`.
+- **Codebase Auditor** (`general-purpose`) — brief: `references/codebase-auditor-brief.md`.
+- **Questioner** (`general-purpose`) — brief: `references/questioner-brief.md`. Receives `rationale_out` in full.
+- **Craft Reviewer** (`general-purpose`) — brief: `references/craft-reviewer-brief.md`.
 
-- `id`, `type`, `summary`, `acceptance_criteria`, **`rationale`** (so the reviewer can reason about design soundness, not just compliance)
-- The full Definition of Done
-- The implementer's output JSON (which contains the full cumulative diff per the invariant above)
-- The rubric below
-- **Evidence filter: every entry in `blocking`, `design_blockers`, or `design_notes` must cite at least one concrete `file:line` location and state what the cited code shows. The cited location may be anywhere in the repository — it is not restricted to lines in the diff. (Cross-cutting design concerns about platform version, downstream consumers, security, or accessibility often need to anchor on unchanged files that interact with the diff.) Hunches and stylistic preferences without code-anchored evidence do not qualify and must be dropped, not downgraded to `non_blocking`.**
+Each reviewer receives:
 
-The reviewer **must independently re-run** `test`, `lint`, and `typecheck` against the applied diff using its own shell access. The implementer's claim that commands passed is not sufficient evidence. The reviewer must not substitute reading the diff or reasoning about likely outcomes for actually executing the commands. If the reviewer believes it cannot run shell tools in its environment, it must return `status: "fail"` with a single blocking item: `"reviewer lacks shell access — cannot verify"`. This is a hard rule, not a stylistic preference.
+- `base_sha`
+- `workspace = $WORKTREE`
+- Paths to the repo's `CLAUDE.md` and any references the user supplied
+- For the Questioner: the full `rationale_out` block from the implementer
+- For the Validator: `scope_declared` from `rationale_out` (the diff allow-list)
 
-**Required output** (exact shape):
-```json
-{
-  "status": "pass" | "fail" | "escalate",
-  "commands_run": ["<test cmd>", "<lint cmd>", "<typecheck cmd>"],
-  "verification_evidence": {
-    "test":      {"exit_code": 0, "excerpt": "<last 5–10 lines of output>"},
-    "lint":      {"exit_code": 0, "excerpt": "<relevant lines or 'clean'>"},
-    "typecheck": {"exit_code": 0, "excerpt": "<relevant lines or 'clean'>"}
-  },
-  "axes": {
-    "correctness":       {"ok": true, "notes": "..."},
-    "tests":             {"ok": true, "notes": "..."},
-    "test_quality":      {"ok": true, "notes": "..."},
-    "code_quality":      {"ok": true, "notes": "..."},
-    "architectural_fit": {"ok": true, "notes": "..."}
-  },
-  "blocking":        ["<DoD violation or defect in changed code, with file:line evidence>", "..."],
-  "design_blockers": ["<concern that rises to 'the plan itself is wrong', with file:line evidence>", "..."],
-  "design_notes":    ["<weakness in the plan worth flagging but not blocking, with file:line evidence>", "..."],
-  "non_blocking":    ["<nit, with file:line>", "..."],
-  "summary": "<≤5 lines>"
-}
+Reviewers return strict JSON. The field schema is **fixed at four arrays across all four reviewers**; some reviewers fill only a subset (the rest are empty arrays):
+
+- `blocking` — concrete defect in the diff with `file:line` evidence. **Any reviewer may populate.** Forces another round.
+- `discrepancy` — structural problem requiring re-think (right problem? right root cause? right approach vs the rejected alternatives?). **Questioner only.** Forces another round.
+- `quality_note` — advisory; never gates. Codebase Auditor, Questioner, Craft Reviewer may populate.
+- `nit` — minor; never gates. Any reviewer may populate.
+
+Reviewers do **not** vote: any `status` or `verdict` field they emit is treated as ignored courtesy. Main computes the loop verdict from field occupancy.
+
+### C. Verdict aggregation (mechanical — main applies, reviewers never vote)
+
+After collecting all four reviewer JSON outputs, apply this rule **in order**:
+
+1. **Malformed JSON** — if any reviewer's output is malformed (missing required field, wrong type, non-parseable), re-spawn that reviewer once with the same brief plus a stricter "your previous output was malformed; conform to the schema" preamble. If the second attempt is still malformed, **escalate to the user**. Verdict-validation re-spawns do not count against the 3-round cap. Do not re-spawn the implementer on a reviewer-validation failure — the reviewer is the broken component.
+
+2. Once all four outputs are valid, compute the verdict from field occupancy:
+   - Any `blocking` finding (from any reviewer) → **adjust** if rounds remain, else **escalate**.
+   - Any `discrepancy` finding (Questioner only) → **adjust** if rounds remain, else **escalate**.
+   - Only `quality_note` and/or `nit` findings, or no findings at all → **pass** → exit loop and proceed to commit.
+
+### D. Iterate
+
+- **pass** → commit and report (next section).
+- **adjust** → spawn a fresh implementer (step A) with round-N>1 inputs (including the aggregated findings and the surgical-fix directive). Then spawn the four reviewers in parallel (identical brief — no awareness of round number).
+- **escalate** → exit the loop. Commit current state in the worktree with a `Review-Status` trailer (see next section) and report to the user with un-addressed findings labeled. The user decides next steps.
+- **Hard cap: 3 `adjust` rounds.** After round 3, exit the loop regardless of verdict. If outstanding `blocking` or `discrepancy` remain, this is the `escalate` branch.
+
+## Commit, branch, and report
+
+When the loop converges (`pass` verdict OR 3-round cap exhausted OR escape hatch from worker), the implementer commits **inside the worktree** on the per-task branch. Single commit per task:
+
+```
+cd "$WORKTREE"
+git add -A
+git commit -m "<message below>"
 ```
 
-`commands_run` and `verification_evidence` are mandatory. A verdict with empty `commands_run` or missing `verification_evidence` for any of the three checks is **invalid** — see verdict validation in step C.
+Commit message structure (conventional commits — blank lines between subject, body, and trailers are required for `git interpret-trailers` and downstream tooling to parse correctly):
 
-Field placement is strict:
+```
+<type>(<scope-short>): <one-line summary>
 
-- A concrete defect found in changed code → `blocking` (drives `fail`).
-- An objection to the plan that the implementer cannot fix by re-coding to it → `design_blockers` (drives `escalate`).
-- A weakness in the plan that is worth flagging but does not rise to "the plan is wrong" → `design_notes` (compatible with `pass`).
-- A style nit → `non_blocking` (never gates).
+- <bullet of change>
+- <bullet of change>
 
-The verdict `status` must be consistent with the arrays: `blocking` non-empty ⇒ `fail`; `design_blockers` non-empty ⇒ `escalate` (takes precedence over `fail` when both are non-empty — escalation pauses for human arbitration before any retry); both empty ⇒ `pass`.
+Refs: implement-<YYYYMMDD-HHMMSS>-<short-ulid>-<slug>
+```
 
-### C. Iterate
+`<type>` is inferred from `user_request` and the diff: `fix`, `feat`, `refactor`, `chore`, `docs`, `test`. If cap-exhausted with outstanding findings, append a trailer block (preceded by a blank line):
 
-Before acting on the verdict, **validate that the reviewer actually verified**. A verdict is treated as a **verification failure** if any of:
+```
+Review-Status: unresolved (<n> blocking, <m> discrepancy)
+```
 
-- `commands_run` does not include all three commands.
-- `verification_evidence` is missing an entry for any of `test`, `lint`, `typecheck`.
-- Any entry in `verification_evidence` has a null/missing `exit_code` or an `excerpt` indicating the command was not actually run (e.g., `"shell unavailable"`, `"could not execute"`).
-- `blocking` contains a "reviewer cannot verify" sentinel (any wording that asserts the reviewer was unable to run the checks).
+The commit lands on the `implement/<timestamp>-<short-ulid>-<slug>` branch only. **Do not merge to main. Do not push. Do not remove the worktree.** The user's manual merge is the gate.
 
-On verification failure: re-spawn the reviewer **once**, with a stricter invocation that quotes the verification rule and the four conditions above. If the second attempt is also a verification failure, **escalate to the user** — surface the verdict(s), the current diff, and the implementer's `rationale_out`. Do not invoke the implementer for verification failures: the reviewer is the broken component, not the change. This re-spawn does not count against the `fail` round cap.
+After committing, main **reports to the user**:
 
-Once the verdict is verified, act on `status`:
+- **Worktree path** — `$WORKTREE`.
+- **Branch name** — `$BRANCH`.
+- **Commit SHA(s)** — for the user to reference.
+- **Diff summary** — file count, line additions/deletions, list of changed paths.
+- **Final reviewer verdicts** — the four reviewers' findings, summarised. Outstanding `blocking` and `discrepancy` (if cap-exhausted) are surfaced prominently.
+- **Worker `rationale_out`** — the worker's framing of the problem, the approach chosen, alternatives rejected, scope declared, residual risks accepted, TDD posture.
+- **Suggested merge command** — e.g., `gh pr create --base main` from the worktree, or `git checkout main && git merge <branch>` in the parent repo.
+- **Degraded-input note** — if codebase recall returned degraded output, surface a one-line warning.
 
-- `pass` → step D (commit).
-- `fail` → spawn a new implementer (step A) with the full inputs **plus** the prior full cumulative diff, the prior verdict JSON, and the surgical-fix mode directive. The implementer must address every `blocking` item, still under TDD. Then spawn a new reviewer (with the standard invocation — no awareness of round number).
-- `escalate` → **stop the loop for this work item**. Surface the reviewer's `design_blockers` (and `design_notes` if present), the `verification_evidence`, the current diff, and the implementer's `rationale_out` to the user. The user decides next steps. Do not commit.
-- **Hard cap: 3 `fail` rounds per work item.** Escalation terminates the loop immediately and does not count against the cap. Verification-failure re-spawns also do not count against the cap.
+Mid-loop escalations (Questioner `discrepancy` that exhausts the cap, `plan_broken`, `setup_blocked`) surface to the user immediately with the same report shape — they do **not** wait for merge time. For `plan_broken` / `setup_blocked`, no commit is produced (the diff may be empty or partial); the worktree is left dirty for the user to inspect.
 
-### D. Commit
+## Escape hatches and edge cases
 
-Commit when reviewer returned `pass` OR when 3 `fail` rounds have completed.
+- **`plan_broken` from worker.** Exit loop. Surface to user with the agent's evidence; worktree left dirty (no commit). The worker cannot fix a broken plan by retrying.
+- **`setup_blocked` from worker.** Exit loop. Surface to user with the agent's evidence; worktree left dirty (no commit). The test harness cannot be made to exercise the relevant module in isolation.
+- **Malformed reviewer JSON.** Re-spawn that reviewer once; escalate to user on second malformed output. Does not count against the 3-round cap. Do not re-spawn the implementer — the reviewer is the broken component.
+- **3-round cap exhaustion with outstanding `blocking` or `discrepancy`.** Commit anyway with the `Review-Status` trailer; report to user with findings labeled. The user decides whether to merge, iterate further (by re-invoking), or take over manually.
+- **User-supplied dictation in `user_request`.** Passed through verbatim. The implementer reads it and treats it as part of its inputs. Main does not pre-digest it.
+- **Implementer writes outside `$WORKTREE`.** The Validator catches this as `blocking`. Main does not enforce it directly — the filesystem boundary plus the Validator's check together form the guarantee.
+- **Codebase recall returns malformed/empty/errored output.** Set `codebase_recall` to empty and proceed; surface the degradation in the final report. Do not re-spawn inside the same session.
 
-- One commit per work item.
-- Message (conventional commits — blank lines between subject, body, and trailers are required for `git interpret-trailers` and downstream tooling to parse correctly):
+## Borrowed disciplines (inline reference)
 
-  ```
-  <type>(<scope-short>): <summary>
+From `productivity/skills/capture-decision/` — the following patterns transfer verbatim in spirit, adapted for the code-change domain:
 
-  - <bullet of change>
-  - <bullet of change>
+- **Pre-flight clean-tree check via dedicated worktree.** All in-flight changes live in a per-task worktree off `base_sha`. The parent repo's working tree is never touched. Discard = `git worktree remove --force`.
+- **Single-ref diff invariant.** `git diff <base_sha>` only. Never the per-round delta. Reviewers always evaluate the cumulative change.
+- **Stateless reviewers.** Each reviewer spawn re-derives the verdict from scratch. No awareness of round number. Prevents drift and prevents regressions in previously-clean regions from slipping through.
+- **Mechanical verdict aggregation.** Reviewers do not vote. Main computes the loop verdict from field occupancy across all four reviewer JSONs.
+- **Verdict validation.** Re-spawn once on malformed reviewer JSON; escalate on second failure. The reviewer is the broken component, not the change.
+- **Hard cap with escalation, branch-and-report exit.** Three rounds. Cap exhaustion is not failure — it routes to the user with the current state preserved on disk in the worktree. The user's manual merge is the gate.
+- **Additive inputs on retry.** Round-N>1 inputs add to round-1 inputs; they do not replace them. The codebase recall digest persists across rounds.
+- **Escape hatch from the worker.** `plan_broken` and `setup_blocked` are the implementer's equivalents of capture's `no_decisions_found` / `scope_unsalvageable`. Do not iterate when the plan itself is broken.
+- **Surgical-fix mode directive.** Verbatim in the round-N>1 brief. Prevents oscillation between implementation strategies.
 
-  Refs: <id>
-  ```
-
-  where `<type>` maps from `work_item.type`: `fix` → `fix`, `feature` → `feat`, `refactor` → `refactor`, `chore` → `chore`.
-- If the final verdict was `fail` after round 3, append the trailer block (preceded by a blank line):
-
-  ```
-  Review-Status: unresolved (<n> blocking issues remain)
-  ```
-
-- If the reviewer surfaced `design_notes` but the verdict was `pass`, append (preceded by a blank line):
-
-  ```
-  Design-Notes: <n> note(s) flagged — see review log
-  ```
-
-Do not abandon the run on a single unresolved or note-bearing item. Move to the next work item.
-
-## Definition of Done (passed verbatim to both subagents)
-
-A work item is Done when **all** hold:
-
-1. **TDD evidence.** A test exists that fails on the pre-change tree and passes on the post-change tree. (Relaxed for behavior-free chores — see implementer method. Relaxed with explicit justification for `setup_blocked` cases.)
-2. **Tests green.** Full suite passes: `<test>`.
-3. **Static checks green.** Lint clean: `<lint>`. Typecheck clean: `<typecheck>`. Pre-existing warnings on unrelated lines are not this work item's problem — verify with git blame if borderline.
-4. **Scope respected.** No files or symbols modified outside the declared `scope`.
-5. **No silent deps.** New runtime dependencies, env vars, or migrations are explicitly listed in `rationale_out`.
-6. **Hygiene.** No commented-out code, debug prints, or new TODOs introduced.
-7. **Surface documented.** Public API or user-visible behavior changes are reflected in the appropriate docstring / README / changelog entry.
-
-## Reviewer rubric (all five axes mandatory, plus design layer)
-
-1. **Correctness** — does the change actually deliver `acceptance_criteria`? For fixes, does it address the root cause given in `rationale`? If the reviewer believes a *different* root cause is in play, that belongs in `design_blockers`, not `blocking`.
-2. **Tests** — is the TDD evidence real (test failed before, passes now)? Is the suite green when the reviewer runs it independently?
-3. **Test quality** — assertions exercise the failure mode or new behavior, not just paths; no over-mocking; no tests that lock in implementation details rather than behavior; the test would actually catch a future regression that re-introduces the bug.
-4. **Code quality** — readable, names carry intent, no duplication, follows surrounding conventions; for features, the public API is minimal and consistent with existing patterns.
-5. **Architectural fit** — change sits at the right layer; no leaky abstractions; no inappropriate coupling across module boundaries; for features, new code is placed where comparable code already lives.
-
-**Design layer (uses `rationale`, produces `design_blockers` or `design_notes`):**
-
-- Is the chosen approach in `rationale` actually well-suited to the problem, given what the diff reveals about the surrounding code?
-- Are any of the rejected alternatives now looking better in light of what was discovered during implementation?
-- Are there constraints or interactions the upstream design clearly did not consider (platform version, downstream consumers, related flows, accessibility, security)?
-- Does the fix address the root cause or only mask the symptom?
-- Are residual risks listed in `rationale` actually still acceptable in light of what the diff exposes?
-
-A design observation is a `design_blocker` (forces `escalate`) when it asserts "the plan itself is wrong, re-coding to this plan will not fix it" — wrong root cause, hidden constraint that defeats the approach, materially better alternative now visible. It is a `design_note` (compatible with `pass`) when it asserts "the plan has a weakness worth flagging at commit time, but the change as written is still acceptable."
-
-Every design entry — blocker or note — must cite concrete `file:line` evidence, and the cited file may be anywhere in the repository (often outside the diff, since the most important design concerns hinge on how unchanged code interacts with the change). Vibes do not qualify. "I think there might be a better way" is not a valid entry. "The chosen `visiblePassword` keyboard type at `lib/auth/login_form.dart:42` disables iOS 17+ password-manager autofill — see `lib/auth/autofill.dart:11` (unchanged by this diff) where autofill is wired and depends on the default keyboard. `rationale` did not flag this as accepted." → this is a `design_blocker` (the fix is wrong given the cited interaction). "The new helper at `src/util/format.ts:88` duplicates logic already in `src/format/locale.ts:30`; not blocking because the call sites are different, but worth consolidating later." → this is a `design_note`.
-
-## Final report (after all work items in a batch)
-
-Emit a table:
-
-| id | type | rounds_used | final_status | commit_sha | design_notes |
-|----|------|-------------|--------------|------------|--------------|
-
-Where `final_status` ∈ `passed` / `unresolved` / `escalated` / `plan_broken` / `setup_blocked`. Call out any non-`passed` rows prominently so the user knows where to look.
+The pattern is borrowed inline, not factored. Factoring waits for a third instance of the worker-plus-reviewer loop to appear.

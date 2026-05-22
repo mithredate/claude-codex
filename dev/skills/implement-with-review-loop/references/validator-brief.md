@@ -17,8 +17,9 @@ Before you write your output, sit with this: **if you skip re-running these comm
 - `base_sha` — the commit before the implementation started.
 - `workspace` — `$WORKTREE`. All checks operate against this path, not against the parent repo.
 - Diff command: `git -C $WORKTREE diff $base_sha` — full cumulative change since base.
-- Path to the repo's `CLAUDE.md` — read this for the declared test/lint/typecheck commands.
 - `scope_declared` — the file allow-list the implementer declared in `rationale_out`. The diff must stay within this list (new files must be inside its directory hints).
+
+The repo's `CLAUDE.md` is auto-loaded into your session; consult it for the declared test/lint/typecheck commands.
 
 ## Verification rules (hard, not stylistic)
 

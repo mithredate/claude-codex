@@ -19,8 +19,9 @@ Before you write your output, sit with this: **if this change shipped today and 
 - `base_sha` — the commit before the implementation started.
 - `workspace` — `$WORKTREE`.
 - Diff command: `git -C $WORKTREE diff $base_sha` — full cumulative change since base.
-- Path to the repo's `CLAUDE.md` — read this for layer conventions, test placement conventions, public-API style.
 - The implementer's `new_or_modified_tests` array (so you can locate the tests structurally).
+
+The repo's `CLAUDE.md` is auto-loaded into your session; consult it for layer conventions, test placement conventions, and public-API style.
 
 ## Illustrative categories — illustrative, not exhaustive
 

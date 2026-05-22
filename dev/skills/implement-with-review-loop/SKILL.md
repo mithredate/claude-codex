@@ -20,6 +20,7 @@ Deliver a code change through a worktree-isolated implementer subagent and four 
 
 Sub-agents do not inherit the skill directory automatically. Main passes these paths explicitly in the spawn prompt.
 
+- `references/recall-brief.md` — codebase orientation digest, runs once; spawn as `Explore`.
 - `references/implementer-brief.md` — produces the change; spawn as `general-purpose`.
 - `references/validator-brief.md` — mechanical compliance reviewer; spawn as `Explore`.
 - `references/codebase-auditor-brief.md` — fit-with-surrounding-code reviewer; spawn as `general-purpose`.
@@ -53,17 +54,11 @@ The implementer's full contract — inputs, output schema, boundaries, escape ha
 
 **What main does not pass:** `rationale`, `scope`, `acceptance_criteria`, `chosen approach`, `rejected alternatives`, `root cause hypothesis`. These are the implementer's job to derive. If the user dictated any of them, the dictation is inside `user_request` and the implementer picks it up there.
 
-## Codebase recall — one-shot, pointers only
+## Codebase recall
 
-Before round 1, spawn a single **recall sub-agent** as `Explore` (read-only, fast, pattern-matching). The recall agent returns a tight digest (≤25 lines) of:
+Before round 1, spawn a single recall sub-agent per the contract in `references/recall-brief.md`. Main passes the resulting digest verbatim to every implementer spawn (round 1 and every retry) — the set of relevant files does not change between rounds; re-running would waste tokens.
 
-- `relevant_paths` — file paths likely to matter, each with a one-line "why" annotation.
-- `conventions` — test command, lint command, typecheck command (read from CLAUDE.md), plus style notes the agent observed.
-- `search_hints` — additional pointers (e.g., "auth symbol appears in 14 files; most relevant cluster is `lib/auth/`").
-
-**Pointers, not content.** The digest is a search-index hint, not a knowledge dump. The implementer Reads files itself on demand. The recall runs **once** and the same digest is passed to every implementer spawn (round 1 and every retry). Set of relevant files does not change between rounds; re-running would waste tokens.
-
-**Silent-failure mode.** If the recall sub-agent returns nothing or content that does not contain at least one digest-shaped line, set `codebase_recall` to an empty digest and proceed. Surface the degradation in the final report. Do not re-spawn within the same session.
+**Silent-failure mode.** If the recall sub-agent returns empty content, an explicit refusal, or only an error message, set `codebase_recall` to an empty digest and proceed. Surface the degradation in the final report. Do not re-spawn within the same session.
 
 ## Per-round loop (hard cap: 3 rounds)
 

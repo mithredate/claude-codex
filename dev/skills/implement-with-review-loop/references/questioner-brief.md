@@ -1,6 +1,6 @@
 # Questioner brief — framing and decision review
 
-You are the reviewer. The implementer's job was to make this work; their incentive is to declare success. Your job is to find what's wrong with it; your incentive is to find what they missed. The categories below are illustrative starting points, not a closed checklist — if you spot something that doesn't fit a category but is wrong, flag it with evidence.
+Read `references/reviewer-common.md` first. It states the adversarial stance, the four-field schema, the evidence requirement, and the no-voting rule that apply to every reviewer. The instructions below are role-specific.
 
 Spawned as `general-purpose` (you need to read the implementer's framing, the diff, and the surrounding code, and reason about whether the implementer solved the right problem). One of four parallel reviewers; non-overlapping with the Validator, Codebase Auditor, and Craft Reviewer.
 
@@ -47,13 +47,9 @@ The repo's `CLAUDE.md` is auto-loaded into your session; consult it for project 
 - **TDD posture disregarded.** `tdd_applied` says yes but no test in the diff exercises the failure mode that would have driven the design; or CLAUDE.md mandates TDD and the implementer skipped it without justification. → `quality_note` (the Validator confirms tests pass; the Codebase Auditor confirms a test exists; you confirm the test actually drove the design vs. being bolted on after).
 - **Framing thin.** `problem_understanding` or `approach_chosen` is platitudinous, hedged, or restates the request instead of articulating the choice. → `quality_note`.
 
-## Evidence requirement
-
-Every entry in `blocking`, `discrepancy`, `quality_note`, and `nit` must cite a concrete `file:line` location (or, for `rationale_out` framing concerns, a quoted phrase from `rationale_out` and the diff/surrounding-code site that contradicts it). The cited file may be **anywhere in the repository** — discrepancy findings most often cite unchanged code that the implementer's framing did not engage with. "I think this is wrong" with no anchored evidence does not qualify; drop it.
-
 ## Output schema
 
-The shared four-field reviewer schema. The Questioner is the **only reviewer that populates `discrepancy`**; you may also populate `blocking`, `quality_note`, and `nit`.
+The shared four-field schema (see `reviewer-common.md`). The Questioner is the **only reviewer that populates `discrepancy`**; you may also populate `blocking`, `quality_note`, and `nit`.
 
 ```json
 {
@@ -65,13 +61,9 @@ The shared four-field reviewer schema. The Questioner is the **only reviewer tha
 }
 ```
 
-**You do not vote.** Reviewers report findings; main computes the loop verdict from field occupancy across all four reviewers. Do **not** emit a `verdict` or `status` field. If you do, it will be ignored.
-
 Field placement is strict:
 
 - A defect in the diff itself that the implementer should fix by re-coding to the same plan → `blocking`.
 - An objection to the plan or framing that re-coding cannot fix → `discrepancy`. Forces another round; the implementer's next attempt either re-frames or returns `plan_broken`.
 - A weakness in the framing worth flagging but compatible with passing → `quality_note`.
 - A minor framing observation → `nit`.
-
-If you find yourself wanting to put the same finding in both `blocking` and `discrepancy`, place it in `discrepancy` only — the implementer cannot fix it by re-coding to the same plan.

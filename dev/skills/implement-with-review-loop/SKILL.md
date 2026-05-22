@@ -1,7 +1,7 @@
 ---
 name: implement-with-review-loop
 description: >-
-  Implement code changes — fixes, features, refactors, or substantive chores — under a worktree-isolated implement-then-review loop. Trigger when the user has approved a plan and asked for implementation, or uses phrases like "implement X", "add feature Y", "fix bug Z", "refactor M", "build out the auth flow". Use this skill even when the user does not explicitly ask for review — review is the default for substantive changes. Do NOT trigger for read-only tasks (analysis, exploration, summarization) or trivial one-line edits the user explicitly asks to apply directly.
+  Implement code changes — fixes, features, refactors, or substantive chores — under a worktree-isolated implement-then-review loop. Trigger when the user has approved a plan and asked for implementation, or uses phrases like "implement X", "add feature Y", "fix bug Z", "refactor M", "build out the auth flow". Use this skill even when the user does not explicitly ask for review — review is the default for substantive changes. Do NOT trigger for read-only tasks (analysis, exploration, summarization), trivial one-line edits the user explicitly asks to apply directly, or work in a repo with no runnable test command.
 ---
 
 # Implement with review loop
@@ -22,10 +22,13 @@ Sub-agents do not inherit the skill directory automatically. Main passes these p
 
 - `references/recall-brief.md` — codebase orientation digest, runs once; spawn as `Explore`.
 - `references/implementer-brief.md` — produces the change; spawn as `general-purpose`.
+- `references/reviewer-common.md` — shared reviewer contract (adversarial stance, four-field schema, evidence rule, no-voting). Every reviewer reads this first.
 - `references/validator-brief.md` — mechanical compliance reviewer; spawn as `Explore`.
 - `references/codebase-auditor-brief.md` — fit-with-surrounding-code reviewer; spawn as `general-purpose`.
 - `references/questioner-brief.md` — framing-and-decision reviewer; spawn as `general-purpose`. Sole authority over `discrepancy`.
 - `references/craft-reviewer-brief.md` — code-craft-on-its-own-terms reviewer; spawn as `general-purpose`.
+- `references/commit-and-report.md` — what main does after the loop exits: commit shape, trailers, report contents, boundaries.
+- `references/worked-example.md` — narrative walkthrough of a fix-scenario round-1-adjust → round-2-pass.
 
 ## Pre-flight
 
@@ -118,36 +121,5 @@ After collecting all four reviewer JSON outputs, apply this rule **in order**:
 
 ## Commit, branch, and report
 
-On `pass` verdict or 3-round cap exhaustion, **main creates a single conventional-commits commit** in the worktree on the per-task branch, using the implementer's last `rationale_out` to construct the message. The message must include this trailer (non-standard; tooling can't infer it):
-
-```
-Refs: <branch-name>
-```
-
-(`<branch-name>` is `$BRANCH` verbatim — the `implement/<timestamp>-<short-ulid>-<slug>` set up in pre-flight.)
-
-On escape hatch (`plan_broken` / `setup_blocked`), no commit is produced; the worktree is left dirty for the user to inspect.
-
-If cap-exhausted with outstanding `blocking` or `discrepancy`, append a second trailer:
-
-```
-Review-Status: unresolved (<n> blocking, <m> discrepancy)
-```
-
-Outstanding `quality_note` does not produce a `Review-Status` trailer — quality findings travel in the report, not in the commit.
-
-**Do not merge to main. Do not push. Do not remove the worktree.** The user's manual merge is the gate.
-
-After committing, main **reports to the user**:
-
-- **Worktree path** — `$WORKTREE`.
-- **Branch name** — `$BRANCH`.
-- **Commit SHA(s)** — for the user to reference.
-- **Diff summary** — file count, line additions/deletions, list of changed paths.
-- **Final reviewer findings** — all four reviewers' findings across all four field types (`blocking`, `discrepancy`, `quality_note`, `nit`), grouped by reviewer. Outstanding `blocking` and `discrepancy` (if cap-exhausted) are surfaced prominently; `quality_note` and `nit` follow.
-- **Implementer `rationale_out`** — the implementer's framing of the problem, the approach chosen, alternatives rejected, scope declared, residual risks accepted, TDD posture.
-- **Suggested merge command** — e.g., `gh pr create --base main` from the worktree, or `git checkout main && git merge <branch>` in the parent repo.
-- **Degraded-input note** — if codebase recall returned degraded output, surface a one-line warning.
-
-Escalations (cap-exhausted with outstanding findings, `plan_broken`, `setup_blocked`) use the same report shape, surfaced immediately — they do **not** wait for merge time.
+On `pass`, 3-round cap exhaustion, or escape hatch, main commits inside the worktree (or leaves it dirty for escape hatches), then reports to the user. **Do not merge to main. Do not push. Do not remove the worktree.** Full contract — commit shape, trailers, report contents — lives in `references/commit-and-report.md`.
 

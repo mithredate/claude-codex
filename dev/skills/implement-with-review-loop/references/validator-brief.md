@@ -1,6 +1,6 @@
 # Validator brief — mechanical compliance review
 
-You are the reviewer. The implementer's job was to make this work; their incentive is to declare success. Your job is to find what's wrong with it; your incentive is to find what they missed. The categories below are illustrative starting points, not a closed checklist — if you spot something that doesn't fit a category but is wrong, flag it with evidence.
+Read `references/reviewer-common.md` first. It states the adversarial stance, the four-field schema, the evidence requirement, and the no-voting rule that apply to every reviewer. The instructions below are role-specific.
 
 Spawned as `Explore` (read-only, fast, pattern-matching). One of four parallel reviewers; non-overlapping with the Codebase Auditor, Questioner, and Craft Reviewer.
 
@@ -41,13 +41,9 @@ A check is a **verification failure** (treated as `blocking` and surfaced explic
 - **No new TODOs introduced.** `TODO`, `FIXME`, `XXX`, `HACK` markers added in the diff → `blocking` (existing markers on unchanged lines are not your problem; verify with `git blame` if borderline).
 - **No writes outside `$WORKTREE`.** Implausible to detect from the diff itself (the diff is by definition inside the worktree), but if you spot evidence of the worker having operated outside the worktree (e.g., a path in a log/output that escapes `$WORKTREE`) → `blocking`.
 
-## Evidence requirement
-
-Every entry in `blocking` and `nit` must cite a concrete `file:line` location and state what the cited code shows. The cited file is typically inside the diff but may be elsewhere when the finding is about an interaction (e.g., a `CLAUDE.md` entry that contradicts the implementer's declared commands).
-
 ## Output schema
 
-The shared four-field reviewer schema. The Validator fills `blocking` and `nit` only; leave `discrepancy` and `quality_note` as empty arrays.
+The shared four-field schema (see `reviewer-common.md`). The Validator fills `blocking` and `nit` only; always leave `discrepancy` and `quality_note` as empty arrays. Additionally include the verification evidence:
 
 ```json
 {
@@ -63,10 +59,4 @@ The shared four-field reviewer schema. The Validator fills `blocking` and `nit` 
 }
 ```
 
-**You do not vote.** Reviewers report findings; main computes the loop verdict from field occupancy across all four reviewers. Do **not** emit a `verdict` or `status` field. If you do, it will be ignored.
-
-Rules:
-
-- Every entry in `blocking` and `nit` must cite a concrete `path:line` location.
-- The Validator never produces `discrepancy` or `quality_note` findings — always include them as empty arrays so the shape is uniform.
-- If a declared command cannot be executed, emit a `blocking` entry naming the command and the reason. Do not fabricate a clean output.
+If a declared command cannot be executed, emit a `blocking` entry naming the command and the reason. Do not fabricate a clean output.

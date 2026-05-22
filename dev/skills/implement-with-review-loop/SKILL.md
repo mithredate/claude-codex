@@ -18,8 +18,9 @@ Deliver a code change through a worktree-isolated implementer subagent and four 
 
 ## What the references contain
 
-Sub-agents do not inherit the skill directory automatically. Briefs pass these paths explicitly.
+Sub-agents do not inherit the skill directory automatically. Main passes these paths explicitly in the spawn prompt.
 
+- `references/implementer-brief.md` — produces the change; spawn as `general-purpose`.
 - `references/validator-brief.md` — mechanical compliance reviewer; spawn as `Explore`.
 - `references/codebase-auditor-brief.md` — fit-with-surrounding-code reviewer; spawn as `general-purpose`.
 - `references/questioner-brief.md` — framing-and-decision reviewer; spawn as `general-purpose`. Sole authority over `discrepancy`.
@@ -46,19 +47,11 @@ Before spawning anything:
 
 All subsequent reads, writes, `git diff`, `git add`, and `git commit` happen **inside the worktree** — never in the parent repo directly. All `git diff` calls use the **single-ref** form `git diff <base_sha>` (run with `git -C "$WORKTREE" diff "$base_sha"`) — committed, staged, and unstaged changes since base. This is the diff invariant; reviewers always see the cumulative change, never the per-round delta.
 
-## Implementer brief contract — what main passes the implementer
+## Implementer contract
 
-Main passes **raw context plus infrastructure**, not pre-chewed decisions. Specifically:
+The implementer's full contract — inputs, output schema, boundaries, escape hatches — lives in `references/implementer-brief.md`. Before spawning, main reads the brief and constructs the spawn prompt accordingly.
 
-- `user_request` — verbatim user phrasing. No paraphrase.
-- `codebase_recall` — the digest from the recall step below; pointers only.
-- `workspace` — `$WORKTREE`.
-- `base_sha` — for the diff invariant.
-- Paths to relevant references the user supplied or that the repo's CLAUDE.md points at.
-
-Main does **not** pass: `rationale`, `scope`, `acceptance_criteria`, `chosen approach`, `rejected alternatives`, `root cause hypothesis`. These are the implementer's job to derive. If the user dictated any of them, the dictation is inside `user_request` and the implementer picks it up there.
-
-The implementer is also told to **read the repo's CLAUDE.md** for test/lint/typecheck commands, TDD posture, and project conventions. This skill says nothing about TDD specifically — TDD posture is a project-level concern the implementer reads from CLAUDE.md.
+**What main does not pass:** `rationale`, `scope`, `acceptance_criteria`, `chosen approach`, `rejected alternatives`, `root cause hypothesis`. These are the implementer's job to derive. If the user dictated any of them, the dictation is inside `user_request` and the implementer picks it up there.
 
 ## Codebase recall — one-shot, pointers only
 
@@ -78,45 +71,14 @@ Each round = one implementer spawn followed by four parallel reviewer spawns. Re
 
 ### A. Implementer subagent (round 1 and every retry)
 
-Spawn one implementer (`general-purpose`) with:
+Spawn one implementer per the contract in `references/implementer-brief.md`. Round-N>1 adds two things to the round-1 inputs:
 
-- **Round-1 inputs (always — same every round):**
-  - `user_request`, `codebase_recall`, `workspace = $WORKTREE`, `base_sha`, references the user supplied.
-  - Instruction to read the repo's `CLAUDE.md` for test/lint/typecheck commands and TDD posture.
+- The aggregated reviewer findings JSON from the prior round.
+- **Surgical-fix mode directive (verbatim):**
 
-- **Round-N>1 inputs (additions, not substitutions):**
-  - The aggregated reviewer findings JSON from the prior round.
-  - **Surgical-fix mode directive (verbatim):**
+  > Surgical fix mode — you operate on the same worktree across retries. Inspect the current cumulative state via `git -C "$WORKTREE" diff "$base_sha"` before editing. Address every `blocking` and `discrepancy` item from the verdict; if neither is present in this round's findings, address `quality_note` items. Never address `nit`. Do not rewrite working code or expand scope. If you believe a finding requires a larger restructure than the prior approach supports, return `plan_broken` with evidence rather than silently expanding.
 
-    > Surgical fix mode — you operate on the same worktree across retries. Inspect the current cumulative state via `git -C "$WORKTREE" diff "$base_sha"` before editing. Address every `blocking` and `discrepancy` item from the verdict; if neither is present in this round's findings, address `quality_note` items. Never address `nit`. Do not rewrite working code or expand scope. If you believe a finding requires a larger restructure than the prior approach supports, return `plan_broken` with evidence rather than silently expanding.
-
-- **Boundaries:**
-  - All writes happen inside `$WORKTREE`. Touching anything outside the worktree is a violation that the Validator will catch.
-  - Do not add new runtime dependencies without flagging in `residual_risks_accepted`.
-
-- **Escape hatch — `plan_broken` / `setup_blocked`.** If the implementer discovers the plan itself is wrong (the approach won't compile, the root-cause diagnosis is incorrect, a hidden constraint contradicts the approach, the failing test it writes does not actually fail), it returns `status: "plan_broken"` with evidence. If the test harness cannot exercise the relevant module in isolation despite reasonable effort, it returns `status: "setup_blocked"` rather than mocking the world. **Do not iterate** when the implementer returns either code — escalate to the user with the evidence.
-
-- **Required output schema:**
-
-  ```json
-  {
-    "status": "complete" | "plan_broken" | "setup_blocked",
-    "new_or_modified_tests": ["<test identifier in the runner's format>", "..."],
-    "commands_run": ["<test cmd>", "<lint cmd>", "<typecheck cmd>"],
-    "rationale_out": {
-      "problem_understanding": "<what the implementer took the problem to be>",
-      "root_cause":            "<for fixes; 'n/a' for features/chores>",
-      "approach_chosen":       "<one paragraph>",
-      "alternatives_rejected": [{"alternative": "...", "reason": "..."}, "..."],
-      "scope_declared":        ["<file path>", "..."],
-      "residual_risks_accepted": ["...", "..."],
-      "tdd_applied":           {"applied": true, "justification": "<brief>"}
-    },
-    "blocker_evidence": "<only when status != complete: what you tried, what failed, why it shows the plan/setup is broken>"
-  }
-  ```
-
-`scope_declared` feeds the Validator (it checks the diff stays within this allow-list). The rest of `rationale_out` feeds the Questioner.
+When the implementer returns `status: "plan_broken"` or `"setup_blocked"`, **do not iterate** — exit the loop and escalate to the user with the implementer's `blocker_evidence`. The worktree is left dirty (no commit) for the user to inspect.
 
 ### B. Reviewer fan-out (every round)
 
@@ -161,11 +123,15 @@ After collecting all four reviewer JSON outputs, apply this rule **in order**:
 
 ## Commit, branch, and report
 
-When the loop converges (`pass` verdict OR 3-round cap exhausted OR escape hatch from the implementer), the implementer creates a **single conventional-commits commit inside the worktree** on the per-task branch. The commit message must include this trailer (non-standard; main can't infer the format):
+On `pass` verdict or 3-round cap exhaustion, **main creates a single conventional-commits commit** in the worktree on the per-task branch, using the implementer's last `rationale_out` to construct the message. The message must include this trailer (non-standard; tooling can't infer it):
 
 ```
-Refs: implement-<YYYYMMDD-HHMMSS>-<short-ulid>-<slug>
+Refs: <branch-name>
 ```
+
+(`<branch-name>` is `$BRANCH` verbatim — the `implement/<timestamp>-<short-ulid>-<slug>` set up in pre-flight.)
+
+On escape hatch (`plan_broken` / `setup_blocked`), no commit is produced; the worktree is left dirty for the user to inspect.
 
 If cap-exhausted with outstanding `blocking` or `discrepancy`, append a second trailer:
 
@@ -188,5 +154,5 @@ After committing, main **reports to the user**:
 - **Suggested merge command** — e.g., `gh pr create --base main` from the worktree, or `git checkout main && git merge <branch>` in the parent repo.
 - **Degraded-input note** — if codebase recall returned degraded output, surface a one-line warning.
 
-Mid-loop escalations (Questioner `discrepancy` that exhausts the cap, `plan_broken`, `setup_blocked`) surface to the user immediately with the same report shape — they do **not** wait for merge time. For `plan_broken` / `setup_blocked`, no commit is produced (the diff may be empty or partial); the worktree is left dirty for the user to inspect.
+Escalations (cap-exhausted with outstanding findings, `plan_broken`, `setup_blocked`) use the same report shape, surfaced immediately — they do **not** wait for merge time.
 

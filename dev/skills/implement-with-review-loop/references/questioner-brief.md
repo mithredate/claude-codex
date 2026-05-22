@@ -32,7 +32,7 @@ Before you write your output, sit with this: **steelman the rejected alternative
   - `alternatives_rejected` — list of `{alternative, reason}`.
   - `scope_declared` — file allow-list.
   - `residual_risks_accepted` — list.
-  - `tdd_applied` — boolean + justification.
+  - `tdd_applied` — `{applied: bool, justification: <brief>}`.
 - Path to the repo's `CLAUDE.md` and any references the user supplied.
 
 ## Illustrative categories — illustrative, not exhaustive

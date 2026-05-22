@@ -1,7 +1,7 @@
 ---
 name: implement-with-review-loop
 description: >-
-  Implement code changes — fixes, features, refactors, or substantive chores — under a worktree-isolated implement-then-review loop. Trigger when the user has approved a plan and asked for implementation, or uses phrases like "implement X", "add feature Y", "fix bug Z", "refactor M", "build out the auth flow". Use this skill even when the user does not explicitly ask for review — review is the default for substantive changes. Do NOT trigger for read-only tasks (analysis, exploration, summarization), trivial one-line edits the user explicitly asks to apply directly, or work in a repo with no runnable test command.
+  Implement code changes — fixes, features, refactors, or substantive chores — under a worktree-isolated implement-then-review loop. Trigger when the user has approved a plan and asked for implementation, or uses phrases like "implement X", "add feature Y", "fix bug Z", "refactor M", "build out the auth flow". Use this skill even when the user does not explicitly ask for review — review is the default for substantive changes. Do NOT trigger for read-only tasks (analysis, exploration, summarization) or trivial one-line edits the user explicitly asks to apply directly.
 ---
 
 # Implement with review loop
@@ -31,7 +31,7 @@ Before spawning anything:
 
 1. Confirm the user's request is in scope (substantive code change; not read-only; not a one-line edit they asked to apply directly). If ambiguous, stop and ask.
 2. Capture `base_sha = git rev-parse HEAD` in the parent repo. This is the diff-invariant anchor.
-3. Capture the `user_request` **verbatim**. Do not paraphrase. If the user dictated scope, acceptance criteria, a chosen approach, or a root-cause hypothesis, that dictation lives inside `user_request` and the worker reads it from there.
+3. Capture the `user_request` **verbatim**. Do not paraphrase. If the user dictated scope, acceptance criteria, a chosen approach, or a root-cause hypothesis, that dictation lives inside `user_request` and the implementer reads it from there.
 4. Create the per-task worktree on a fresh branch:
 
    ```
@@ -56,9 +56,9 @@ Main passes **raw context plus infrastructure**, not pre-chewed decisions. Speci
 - `base_sha` — for the diff invariant.
 - Paths to relevant references the user supplied or that the repo's CLAUDE.md points at.
 
-Main does **not** pass: `rationale`, `scope`, `acceptance_criteria`, `chosen approach`, `rejected alternatives`, `root cause hypothesis`. These are the worker's job to derive. If the user dictated any of them, the dictation is inside `user_request` and the worker picks it up there.
+Main does **not** pass: `rationale`, `scope`, `acceptance_criteria`, `chosen approach`, `rejected alternatives`, `root cause hypothesis`. These are the implementer's job to derive. If the user dictated any of them, the dictation is inside `user_request` and the implementer picks it up there.
 
-The worker is also told to **read the repo's CLAUDE.md** for test/lint/typecheck commands, TDD posture, and project conventions. This skill says nothing about TDD specifically — TDD posture is a project-level concern the worker reads from CLAUDE.md.
+The implementer is also told to **read the repo's CLAUDE.md** for test/lint/typecheck commands, TDD posture, and project conventions. This skill says nothing about TDD specifically — TDD posture is a project-level concern the implementer reads from CLAUDE.md.
 
 ## Codebase recall — one-shot, pointers only
 
@@ -95,7 +95,7 @@ Spawn one implementer (`general-purpose`) with:
   - All writes happen inside `$WORKTREE`. Touching anything outside the worktree is a violation that the Validator will catch.
   - Do not add new runtime dependencies without flagging in `residual_risks_accepted`.
 
-- **Escape hatch — `plan_broken` / `setup_blocked`.** If the worker discovers the plan itself is wrong (the approach won't compile, the root-cause diagnosis is incorrect, a hidden constraint contradicts the approach, the failing test it writes does not actually fail), it returns `status: "plan_broken"` with evidence. If the test harness cannot exercise the relevant module in isolation despite reasonable effort, it returns `status: "setup_blocked"` rather than mocking the world. **Do not iterate** when the worker returns either code — escalate to the user with the evidence.
+- **Escape hatch — `plan_broken` / `setup_blocked`.** If the implementer discovers the plan itself is wrong (the approach won't compile, the root-cause diagnosis is incorrect, a hidden constraint contradicts the approach, the failing test it writes does not actually fail), it returns `status: "plan_broken"` with evidence. If the test harness cannot exercise the relevant module in isolation despite reasonable effort, it returns `status: "setup_blocked"` rather than mocking the world. **Do not iterate** when the implementer returns either code — escalate to the user with the evidence.
 
 - **Required output schema:**
 
@@ -112,7 +112,7 @@ Spawn one implementer (`general-purpose`) with:
       "alternatives_rejected": [{"alternative": "...", "reason": "..."}, "..."],
       "scope_declared":        ["<file path>", "..."],
       "residual_risks_accepted": ["...", "..."],
-      "tdd_applied":           {"yes": true, "justification": "<brief>"}
+      "tdd_applied":           {"applied": true, "justification": "<brief>"}
     },
     "blocker_evidence": "<only when status != complete: what you tried, what failed, why it shows the plan/setup is broken>"
   }
@@ -212,8 +212,8 @@ Mid-loop escalations (Questioner `discrepancy` that exhausts the cap, `plan_brok
 - **`setup_blocked` from worker.** Exit loop. Surface to user with the agent's evidence; worktree left dirty (no commit). The test harness cannot be made to exercise the relevant module in isolation.
 - **Malformed reviewer JSON.** Re-spawn that reviewer once; escalate to user on second malformed output. Does not count against the 3-round cap. Do not re-spawn the implementer — the reviewer is the broken component.
 - **3-round cap exhaustion with outstanding `blocking` or `discrepancy`.** Commit anyway with the `Review-Status` trailer; report to user with findings labeled. The user decides whether to merge, iterate further (by re-invoking), or take over manually.
-- **User-supplied dictation in `user_request`.** Passed through verbatim. The worker reads it and treats it as part of its inputs. Main does not pre-digest it.
-- **Worker writes outside `$WORKTREE`.** The Validator catches this as `blocking`. Main does not enforce it directly — the filesystem boundary plus the Validator's check together form the guarantee.
+- **User-supplied dictation in `user_request`.** Passed through verbatim. The implementer reads it and treats it as part of its inputs. Main does not pre-digest it.
+- **Implementer writes outside `$WORKTREE`.** The Validator catches this as `blocking`. Main does not enforce it directly — the filesystem boundary plus the Validator's check together form the guarantee.
 - **Codebase recall returns malformed/empty/errored output.** Set `codebase_recall` to empty and proceed; surface the degradation in the final report. Do not re-spawn inside the same session.
 
 ## Borrowed disciplines (inline reference)

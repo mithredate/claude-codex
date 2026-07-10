@@ -16,6 +16,12 @@ This repository vendors skills from other open-source projects. Originals retain
 - **Copyright:** Copyright (c) 2025 Jesse Vincent
 - **Vendored skills:** dev/systematic-debugging
 
+### ponytail
+- **Repository:** https://github.com/DietrichGebert/ponytail
+- **License:** MIT
+- **Copyright:** © 2026 DietrichGebert
+- **Vendored skills:** dev/ponytail
+
 <!--
 Format for each upstream:
 

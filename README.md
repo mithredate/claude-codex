@@ -9,6 +9,7 @@ Opinionated, curated Claude Code skills — vendored from upstream sources (matt
   - `install-claude-sidecar` — install the Claude sidecar viewer
   - `tdd` — test-driven development with a red-green-refactor loop
   - `systematic-debugging` — finding root cause before applying a fix
+  - `ponytail` — force the laziest solution that actually works — YAGNI, stdlib first, shortest diff
 - **meta** — skills for maintaining this marketplace itself
   - `import-skill` — vendor a new skill from a GitHub upstream
   - `refresh-vendored` — reconcile vendored skills against upstream changes

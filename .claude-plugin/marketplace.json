@@ -36,9 +36,10 @@
     {
       "name": "in-progress",
       "source": "./in-progress",
-      "description": "Skills being actively authored or rewritten. Expect rough edges.",
+      "description": "Skills being actively authored or rewritten. Installable for dogfooding; expect churn until they graduate.",
       "skills": [
-        "./skills/weigh-feature-complexity"
+        "./skills/weigh-feature-complexity",
+        "./skills/work-like-me"
       ]
     },
     {

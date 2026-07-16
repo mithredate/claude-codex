@@ -9,19 +9,26 @@ Opinionated, curated Claude Code skills — vendored from upstream sources (matt
   - `install-claude-sidecar` — install the Claude sidecar viewer
   - `tdd` — test-driven development with a red-green-refactor loop
   - `systematic-debugging` — finding root cause before applying a fix
+  - `implement-with-review-loop` — implement changes under a worktree-isolated implement-then-review loop
   - `ponytail` — force the laziest solution that actually works — YAGNI, stdlib first, shortest diff
 - **meta** — skills for maintaining this marketplace itself
   - `import-skill` — vendor a new skill from a GitHub upstream
   - `refresh-vendored` — reconcile vendored skills against upstream changes
   - `merge-skill` — shared core that reconciles two skill versions into one (used by the above)
 - **productivity** — process and workflow skills
-  - `grill-me` — stress-test a plan or design by interrogation
-  - `write-a-skill` — author new skills with proper structure and progressive disclosure
-  - `handoff` — compact the current conversation into a handoff doc for the next session
+  - `grill-me` — launcher that opens a `grilling` session (thin shim)
+  - `grilling` — stress-test a plan, decision, or idea by relentless one-question-at-a-time interrogation
+  - `write-a-skill` — reference for the craft of writing skills: predictability, context vs cognitive load, information hierarchy, leading words, failure modes
+  - `teach` — turn the working directory into a stateful workspace for learning a topic across sessions
   - `capture-decision` — end-of-session capture into a decision archive via multi-agent review loop
   - `recall-decision` — mid-session lookup against a decision archive via a sub-agent digest
-- **in-progress** — skills being actively authored or rewritten _(empty for now)_
-- **deprecated** — skills phased out, kept installable during transitions _(empty for now)_
+- **in-progress** — skills being actively authored or rewritten (under evaluation, not marketplace-listed)
+  - `wayfinder` — plan oversized work as a map of decision tickets on an issue tracker, resolved one at a time
+  - `domain-modeling` — pin down a domain's terms and boundaries; record choices as ADRs
+  - `research` — resolve a factual question a decision waits on via a focused research subagent
+  - `prototype` — make a cheap, rough artifact (outline, stub, UI/logic) to react to
+- **deprecated** — skills phased out, kept installable during transitions
+  - `handoff` — compact the current conversation into a handoff doc for the next session
 
 ## Installation
 

@@ -1,6 +1,6 @@
 # Craft Reviewer brief — code well-made on its own terms
 
-Read `references/reviewer-common.md` first. It states the adversarial stance, the four-field schema, the evidence requirement, and the no-voting rule that apply to every reviewer. The instructions below are role-specific.
+Read `references/reviewer-common.md` first. It states the adversarial stance, the five-field schema, the evidence requirement, and the no-voting rule that apply to every reviewer. The instructions below are role-specific.
 
 Spawned as `general-purpose` (you need to read and reason about the diff's prose at the level of a careful reader inheriting the code). One of four parallel reviewers; non-overlapping with the Validator, Codebase Auditor, and Questioner.
 
@@ -31,13 +31,14 @@ The repo's `CLAUDE.md` is auto-loaded into your session; consult it for style no
 - **DAMP tests.** Tests should be Descriptive And Meaningful in their Phrasing — each test reads like a small story (arrange / act / assert) without forcing the reader to chase shared helpers. Over-DRY tests where a reader cannot tell what is being asserted without three indirections → `quality_note` or `blocking` if the test is unreadable.
 - **Comments that should be removed.** Restate-the-code comments (`// increment i by 1`), commented-out code, stale TODOs from the implementer's draft state. → `blocking` (for commented-out code or new TODOs the implementer left in) or `nit`.
 - **Comments that exist because the code fails to communicate.** If a comment explains what a block of code is for and a clearer name or a small extracted function would remove the need for the comment, that's a craft issue. → `quality_note`.
+- **Speculative complexity (YAGNI).** An interface with one implementation, a factory for one product, config for a value that never changes, scaffolding "for later", an abstraction with no second caller. The simplest code that works is the standard; deletion beats addition. → `quality_note`, or `blocking` if the indirection obscures correctness review.
 - **Magic numbers and stringly-typed flags.** Untokenized literals, raw strings used as enum-like switches. → `quality_note`.
 - **Error handling shape.** Swallowed exceptions, errors used for control flow, error messages that lose the root cause. → `quality_note` or `blocking` depending on severity.
 - **Future-reader navigability.** Can the reader follow the new code path top-to-bottom without scrolling elsewhere to understand it? If not, point at the specific scroll-away.
 
 ## Output schema
 
-The shared four-field schema (see `reviewer-common.md`). The Craft Reviewer fills `blocking`, `quality_note`, and `nit`; always leave `discrepancy` as an empty array.
+The shared five-field schema (see `reviewer-common.md`). The Craft Reviewer fills `blocking`, `quality_note`, `nit`, and `learnings`; always leave `discrepancy` as an empty array.
 
 ```json
 {
@@ -45,7 +46,8 @@ The shared four-field schema (see `reviewer-common.md`). The Craft Reviewer fill
   "blocking":      ["<file:line> <one-sentence finding>", "..."],
   "discrepancy":   [],
   "quality_note":  ["<file:line> <one-sentence finding>", "..."],
-  "nit":           ["<file:line> <one-sentence finding>", "..."]
+  "nit":           ["<file:line> <one-sentence finding>", "..."],
+  "learnings":     ["<design-level, code-independent constraint>", "..."]
 }
 ```
 

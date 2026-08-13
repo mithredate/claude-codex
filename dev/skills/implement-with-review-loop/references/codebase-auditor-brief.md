@@ -1,6 +1,6 @@
 # Codebase Auditor brief — fit with the surrounding world
 
-Read `references/reviewer-common.md` first. It states the adversarial stance, the four-field schema, the evidence requirement, and the no-voting rule that apply to every reviewer. The instructions below are role-specific.
+Read `references/reviewer-common.md` first. It states the adversarial stance, the five-field schema, the evidence requirement, and the no-voting rule that apply to every reviewer. The instructions below are role-specific.
 
 Spawned as `general-purpose` (you need to read files beyond the diff and reason across modules). One of four parallel reviewers; non-overlapping with the Validator, Questioner, and Craft Reviewer.
 
@@ -20,14 +20,14 @@ Before you write your output, sit with this: **if this change shipped today and 
 - `workspace` — `$WORKTREE`.
 - Diff command: `git -C $WORKTREE diff $base_sha` — full cumulative change since base.
 
-The repo's `CLAUDE.md` is auto-loaded into your session; consult it for layer conventions, test placement conventions, and public-API style.
+The repo's `CLAUDE.md` is auto-loaded into your session; consult it for layer conventions, test placement conventions, and public-API style. **Conventions source of truth:** the surrounding code first, then `CLAUDE.md`; when the two conflict, raise the conflict as a `quality_note` rather than silently picking one.
 
 Locate tests in the diff by file-path conventions (typically `*test*`, `*spec*`, files under `tests/` or `__tests__/` directories) — consult CLAUDE.md if the project has unusual conventions.
 
 ## Illustrative categories — illustrative, not exhaustive
 
 - **Test integration.** A test exists in the diff (or in `new_or_modified_tests`) that exercises the changed behavior — not a tangential test, not a smoke test on an unrelated path. Missing test for changed behavior → `blocking`.
-- **Downstream consumers.** A symbol's signature changed (parameter added, return type narrowed, exception class swapped). Search the repo for call sites of that symbol; any call site not updated → `blocking` citing the unchanged call site's `file:line`.
+- **Downstream consumers.** A symbol's signature or behavior changed (parameter added, return type narrowed, exception class swapped). Sweep **every call site of every changed symbol** — not just the ones the request names; any call site not updated → `blocking` citing the unchanged call site's `file:line`.
 - **Sibling-file convention.** New code in `lib/auth/foo.ts` should follow the conventions of `lib/auth/bar.ts` (naming, error handling, logging, parameter ordering). Divergence with no justification → `quality_note` or `blocking` depending on severity.
 - **Code placement.** New code should live where comparable code lives. A helper for `auth` placed under `lib/util/` rather than `lib/auth/` → `quality_note` (or `blocking` if the misplacement creates a circular dep or layer violation).
 - **Architectural layer.** Domain logic placed in a transport layer (HTTP handler, CLI command, view component) instead of the domain module → `blocking` citing the misplaced `file:line` and the appropriate layer's location.
@@ -37,7 +37,7 @@ Locate tests in the diff by file-path conventions (typically `*test*`, `*spec*`,
 
 ## Output schema
 
-The shared four-field schema (see `reviewer-common.md`). The Codebase Auditor fills `blocking`, `quality_note`, and `nit`; always leave `discrepancy` as an empty array.
+The shared five-field schema (see `reviewer-common.md`). The Codebase Auditor fills `blocking`, `quality_note`, `nit`, and `learnings`; always leave `discrepancy` as an empty array.
 
 ```json
 {
@@ -45,7 +45,8 @@ The shared four-field schema (see `reviewer-common.md`). The Codebase Auditor fi
   "blocking":      ["<file:line> <one-sentence finding>", "..."],
   "discrepancy":   [],
   "quality_note":  ["<file:line> <one-sentence finding>", "..."],
-  "nit":           ["<file:line> <one-sentence finding>", "..."]
+  "nit":           ["<file:line> <one-sentence finding>", "..."],
+  "learnings":     ["<design-level, code-independent constraint>", "..."]
 }
 ```
 

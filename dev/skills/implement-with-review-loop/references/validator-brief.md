@@ -1,6 +1,6 @@
 # Validator brief — mechanical compliance review
 
-Read `references/reviewer-common.md` first. It states the adversarial stance, the four-field schema, the evidence requirement, and the no-voting rule that apply to every reviewer. The instructions below are role-specific.
+Read `references/reviewer-common.md` first. It states the adversarial stance, the five-field schema, the evidence requirement, and the no-voting rule that apply to every reviewer. The instructions below are role-specific.
 
 Spawned as `Explore` (read-only, fast, pattern-matching). One of four parallel reviewers; non-overlapping with the Codebase Auditor, Questioner, and Craft Reviewer.
 
@@ -39,11 +39,12 @@ A check is a **verification failure** (treated as `blocking` and surfaced explic
 - **No commented-out code in the diff.** Lines like `// foo()` or `# foo()` that wrap previously-live code → `blocking`.
 - **No debug prints introduced.** `console.log`, `print(`, `dbg!`, `println!`, `eprintln!`, `dump`, `pp ` introduced in the diff → `blocking`.
 - **No new TODOs introduced.** `TODO`, `FIXME`, `XXX`, `HACK` markers added in the diff → `blocking` (existing markers on unchanged lines are not your problem; verify with `git blame` if borderline).
+- **No test theater.** A new or modified test that executes but asserts nothing — no assertion statements, tautological assertions (`assert true`, `expect(x).toBe(x)`), or a body that cannot fail → `blocking`. Derive what a real test looks like from this repo's existing suite — its assertion style and coverage posture — not from universal standards; test quality is a per-project convention.
 - **No writes outside `$WORKTREE`.** Implausible to detect from the diff itself (the diff is by definition inside the worktree), but if you spot evidence of the worker having operated outside the worktree (e.g., a path in a log/output that escapes `$WORKTREE`) → `blocking`.
 
 ## Output schema
 
-The shared four-field schema (see `reviewer-common.md`). The Validator fills `blocking` and `nit` only; always leave `discrepancy` and `quality_note` as empty arrays. Additionally include the verification evidence:
+The shared five-field schema (see `reviewer-common.md`). The Validator fills `blocking` and `nit` only; always leave `discrepancy` and `quality_note` as empty arrays. Your findings are mostly mechanical, so your `learnings` array is usually empty (see the skip-mechanical rule in `reviewer-common.md`) — populate it only when a blocking finding encodes a genuine design-level constraint. Additionally include the verification evidence:
 
 ```json
 {
@@ -55,7 +56,8 @@ The shared four-field schema (see `reviewer-common.md`). The Validator fills `bl
   "blocking":      ["<file:line> <one-sentence finding>", "..."],
   "discrepancy":   [],
   "quality_note":  [],
-  "nit":           ["<file:line> <one-sentence finding>", "..."]
+  "nit":           ["<file:line> <one-sentence finding>", "..."],
+  "learnings":     []
 }
 ```
 

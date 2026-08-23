@@ -1,0 +1,9 @@
+{
+  "name": "personal",
+  "version": "0.1.0",
+  "description": "Mehrdad's personal working defaults (work-like-mehrdad).",
+  "author": {
+    "name": "Mehrdad Hedayati",
+    "email": "mehrdad.hedayati@gmail.com"
+  }
+}

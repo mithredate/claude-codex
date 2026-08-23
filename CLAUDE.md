@@ -12,6 +12,7 @@ A Claude Code marketplace repo: opinionated forks of upstream skills (mattpocock
 ├── dev/                                # general development tooling
 ├── meta/                               # repo-self-maintenance skills (import, refresh, merge)
 ├── productivity/                       # process and workflow skills (empty)
+├── personal/                           # Mehrdad's personal working defaults (work-like-mehrdad)
 ├── in-progress/                        # skills being actively authored or rewritten (empty)
 ├── deprecated/                         # skills phased out, kept installable (empty)
 ├── NOTICES.md                          # upstream attribution summary

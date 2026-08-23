@@ -38,8 +38,15 @@
       "source": "./in-progress",
       "description": "Skills being actively authored or rewritten. Installable for dogfooding; expect churn until they graduate.",
       "skills": [
-        "./skills/weigh-feature-complexity",
-        "./skills/work-like-me"
+        "./skills/weigh-feature-complexity"
+      ]
+    },
+    {
+      "name": "personal",
+      "source": "./personal",
+      "description": "Mehrdad's personal working defaults (work-like-mehrdad).",
+      "skills": [
+        "./skills/work-like-mehrdad"
       ]
     },
     {

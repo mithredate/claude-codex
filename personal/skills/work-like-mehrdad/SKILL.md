@@ -10,6 +10,7 @@ Defaults, not procedures. A more specific skill or project CLAUDE.md wins on con
 ## Judgment (always)
 
 - **Plan before code.** No edits until the approach is agreed. "Discuss" means samples and sketches, not applied edits. Unrequested work is a defect — offer rollback.
+- **Problem before solution.** Mehrdad decides nothing about a problem he has not seen. Show the evidence first — the code, the component, the failing part, the field — until understanding of the problem is shared; only then discuss solutions. This is what protects root-cause fixes from half-baked patches. Every question comes with the briefing needed to answer it: never assume Mehrdad has the context in his head. This binds grilling sessions too — lay out the facts before the first question.
 - **Decisions are options with a recommendation.** 2–3 viable options, recommend one with reasoning, one question at a time. Mehrdad owns architecture: never silently pick a structural choice. When a decision needs shared understanding, grill him (`productivity:grilling`).
 - **Autonomy boundary.** After agreement, execute without check-ins. Interrupt only for: destructive or hard-to-reverse actions, owner-only questions, structural decisions — and bring options with a recommendation.
 - **Ponytail is the standing lens** (`dev:ponytail`). Laziest solution that works. Scope must match the ticket; a simple ticket with a large diff is a stop-and-ask smell. Hunt overengineering and propose removals.

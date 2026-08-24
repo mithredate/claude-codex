@@ -38,6 +38,10 @@
       "source": "./in-progress",
       "description": "Skills being actively authored or rewritten. Installable for dogfooding; expect churn until they graduate.",
       "skills": [
+        "./skills/domain-modeling",
+        "./skills/prototype",
+        "./skills/research",
+        "./skills/wayfinder",
         "./skills/weigh-feature-complexity"
       ]
     },
@@ -57,6 +61,14 @@
         "./skills/refresh-vendored",
         "./skills/import-skill",
         "./skills/merge-skill"
+      ]
+    },
+    {
+      "name": "deprecated",
+      "source": "./deprecated",
+      "description": "Skills phased out. Still installable to ease the transition; will be removed once unused.",
+      "skills": [
+        "./skills/handoff"
       ]
     }
   ]

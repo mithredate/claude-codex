@@ -1,6 +1,5 @@
 {
   "name": "dev",
-  "version": "0.1.0",
   "description": "General development tooling skills (manage-claude-md, install-claude-sidecar).",
   "author": {
     "name": "Mehrdad Hedayati",

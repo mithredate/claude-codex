@@ -24,7 +24,7 @@ Opinionated, curated Claude Code skills — vendored from upstream sources (matt
   - `recall-decision` — mid-session lookup against a decision archive via a sub-agent digest
 - **personal** — Mehrdad's personal working defaults
   - `work-like-mehrdad` — engineering defaults for judgment, building, and reviewing; loads at the start of any code-touching session
-- **in-progress** — skills being actively authored or rewritten (under evaluation, not marketplace-listed)
+- **in-progress** — skills being actively authored or rewritten (installable for dogfooding; expect churn until they graduate)
   - `wayfinder` — plan oversized work as a map of decision tickets on an issue tracker, resolved one at a time
   - `domain-modeling` — pin down a domain's terms and boundaries; record choices as ADRs
   - `research` — resolve a factual question a decision waits on via a focused research subagent

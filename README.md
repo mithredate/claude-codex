@@ -23,12 +23,12 @@ Opinionated, curated Claude Code skills — vendored from upstream sources (matt
   - `capture-decision` — end-of-session capture into a decision archive via multi-agent review loop
   - `recall-decision` — mid-session lookup against a decision archive via a sub-agent digest
   - `wayfinder` — plan oversized work as a map of decision tickets on an issue tracker, resolved one at a time
-- **personal** — Mehrdad's personal working defaults
-  - `work-like-mehrdad` — engineering defaults for judgment, building, and reviewing; loads at the start of any code-touching session
-- **in-progress** — skills being actively authored or rewritten (installable for dogfooding; expect churn until they graduate)
   - `domain-modeling` — pin down a domain's terms and boundaries; record choices as ADRs
   - `research` — resolve a factual question a decision waits on via a focused research subagent
   - `prototype` — make a cheap, rough artifact (outline, stub, UI/logic) to react to
+- **personal** — Mehrdad's personal working defaults
+  - `work-like-mehrdad` — engineering defaults for judgment, building, and reviewing; loads at the start of any code-touching session
+- **in-progress** — skills being actively authored or rewritten (installable for dogfooding; expect churn until they graduate)
   - `weigh-feature-complexity` — break a spec or PR into features and visualize the complexity each one adds
   - `show-me` — explain the current topic visually — pseudocode, trees, diffs, mermaid, or one HTML page
 - **deprecated** — skills phased out, kept installable during transitions

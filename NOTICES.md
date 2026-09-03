@@ -8,7 +8,7 @@ This repository vendors skills from other open-source projects. Originals retain
 - **Repository:** https://github.com/mattpocock/skills
 - **License:** MIT
 - **Copyright:** © 2026 Matt Pocock
-- **Vendored skills:** dev/tdd, productivity/grill-me, productivity/grilling, productivity/write-a-skill (seeded from writing-great-skills), productivity/teach, productivity/wayfinder, in-progress/domain-modeling, in-progress/research, in-progress/prototype, deprecated/handoff
+- **Vendored skills:** dev/tdd, productivity/grill-me, productivity/grilling, productivity/write-a-skill (seeded from writing-great-skills), productivity/teach, productivity/wayfinder, productivity/domain-modeling, productivity/research, productivity/prototype, deprecated/handoff
 
 ### skills (humanlayer)
 - **Repository:** https://github.com/humanlayer/skills

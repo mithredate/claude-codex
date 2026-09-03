@@ -10,6 +10,12 @@ This repository vendors skills from other open-source projects. Originals retain
 - **Copyright:** © 2026 Matt Pocock
 - **Vendored skills:** dev/tdd, productivity/grill-me, productivity/grilling, productivity/write-a-skill (seeded from writing-great-skills), productivity/teach, productivity/wayfinder, in-progress/domain-modeling, in-progress/research, in-progress/prototype, deprecated/handoff
 
+### skills (humanlayer)
+- **Repository:** https://github.com/humanlayer/skills
+- **License:** MIT
+- **Copyright:** © 2026 HumanLayer
+- **Vendored skills:** in-progress/show-me
+
 ### superpowers
 - **Repository:** https://github.com/obra/superpowers
 - **License:** MIT

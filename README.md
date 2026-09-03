@@ -11,6 +11,8 @@ Opinionated, curated Claude Code skills — vendored from upstream sources (matt
   - `systematic-debugging` — finding root cause before applying a fix
   - `implement-with-review-loop` — implement changes under a worktree-isolated implement-then-review loop
   - `ponytail` — force the laziest solution that actually works — YAGNI, stdlib first, shortest diff
+  - `verification-before-completion` — require fresh verification evidence before claiming work is done
+  - `codebase-design` — shared vocabulary for designing deep modules and finding deepening opportunities
 - **meta** — skills for maintaining this marketplace itself
   - `import-skill` — vendor a new skill from a GitHub upstream
   - `refresh-vendored` — reconcile vendored skills against upstream changes

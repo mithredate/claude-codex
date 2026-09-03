@@ -11,13 +11,17 @@ Guide users in creating effective CLAUDE.md files that maximize Claude Code's pe
 
 CLAUDE.md is the agent's primary source of truth for how a repository works. It's a high-leverage configuration point—a poorly written CLAUDE.md can degrade performance across all sessions.
 
+## The Cache Principle
+
+The environment is a source of truth too—`package.json` scripts, config files, the directory layout, `--help` output. A CLAUDE.md line that restates it is a cache, and only earns its place when the lookup is expensive. Cache what the agent cannot find by looking: unwritten conventions, the reason behind a choice, the gotcha no config confesses.
+
 ## The WHAT-WHY-HOW Framework
 
 Structure CLAUDE.md around three dimensions:
 
 1. **WHAT**: Tech stack, project structure, codebase map (critical for monorepos)
 2. **WHY**: Purpose of project components and their relationships
-3. **HOW**: Workflows, build commands, verification methods, testing procedures
+3. **HOW**: Workflows, verification methods, testing procedures
 
 ## Length Guidelines
 
@@ -28,11 +32,6 @@ Structure CLAUDE.md around three dimensions:
 ## What to Include
 
 ```markdown
-# Build commands
-- npm run build: Build the project
-- npm run test: Run tests
-- npm run typecheck: Run typechecker
-
 # Code style (brief!)
 - Use ES modules (import/export), not CommonJS
 - Destructure imports when possible
@@ -54,6 +53,7 @@ src/
 2. **Linting rules** - Use actual linters; LLMs are slow and expensive for this
 3. **Code snippets** - They go stale; use `file:line` references instead
 4. **Auto-generated content** - Carefully craft this file; don't rely on `/init`
+5. **Build/test/typecheck commands** - Cheap one-file lookup (`package.json`); they go stale
 
 ## Progressive Disclosure Pattern
 
@@ -91,3 +91,5 @@ See agent_docs/running_tests.md for testing guide.
 
 See [references/checklist.md](references/checklist.md) for quick validation.
 See [references/examples.md](references/examples.md) for templates and patterns.
+
+For the general levers of writing for agents (context pointers, the two loads, information hierarchy, pruning), call the Skill tool with `productivity:write-a-skill`.

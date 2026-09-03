@@ -8,7 +8,7 @@ This repository vendors skills from other open-source projects. Originals retain
 - **Repository:** https://github.com/mattpocock/skills
 - **License:** MIT
 - **Copyright:** © 2026 Matt Pocock
-- **Vendored skills:** dev/tdd, productivity/grill-me, productivity/grilling, productivity/write-a-skill (seeded from writing-great-skills), productivity/teach, productivity/wayfinder, productivity/domain-modeling, productivity/research, productivity/prototype, deprecated/handoff
+- **Vendored skills:** dev/tdd, productivity/grill-me, productivity/grilling, productivity/write-a-skill (seeded from writing-great-skills), productivity/teach, productivity/wayfinder, productivity/domain-modeling, productivity/research, productivity/prototype, deprecated/handoff, dev/codebase-design
 
 ### skills (humanlayer)
 - **Repository:** https://github.com/humanlayer/skills
@@ -20,7 +20,7 @@ This repository vendors skills from other open-source projects. Originals retain
 - **Repository:** https://github.com/obra/superpowers
 - **License:** MIT
 - **Copyright:** Copyright (c) 2025 Jesse Vincent
-- **Vendored skills:** dev/systematic-debugging
+- **Vendored skills:** dev/systematic-debugging, dev/verification-before-completion
 
 ### ponytail
 - **Repository:** https://github.com/DietrichGebert/ponytail

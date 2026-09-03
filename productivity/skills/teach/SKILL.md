@@ -140,4 +140,4 @@ Glossaries, in particular, are an essential reference. Once one is created, it s
 The user will sometimes express preferences of how they want to be taught, or things you should keep in mind. This is the place to record those preferences, so you can refer back to them when designing lessons or working with the user.
 
 ---
-_Adapted from [mattpocock/skills/skills/productivity/teach](https://github.com/mattpocock/skills/tree/e9fcdf95b402d360f90f1db8d776d5dd450f9234/skills/productivity/teach) — MIT © 2026 Matt Pocock._
+_Adapted from [mattpocock/skills/skills/productivity/teach](https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/productivity/teach) — MIT © 2026 Matt Pocock._

@@ -9,7 +9,7 @@ Use this checklist to validate a CLAUDE.md file.
 | Under 300 lines (ideally ~60) | |
 | Contains WHAT (tech stack, structure) | |
 | Contains WHY (purpose of components) | |
-| Contains HOW (commands, workflows) | |
+| Contains HOW (workflows) | |
 | Has directory map/structure | |
 | No task-specific instructions | |
 | No code snippets (uses file:line refs instead) | |
@@ -22,11 +22,9 @@ Use this checklist to validate a CLAUDE.md file.
    - Remove anything that only matters for specific tasks
    - Claude ignores content it deems irrelevant to current task
 
-2. **Are commands complete and correct?**
-   - Build command
-   - Test command (single test AND full suite)
-   - Typecheck command
-   - Lint/format command (if applicable)
+2. **Does each line pass the no-op test?**
+   - For each line, does it change behaviour versus what the agent does by default?
+   - Delete lines that don't
 
 3. **Is the project structure clear?**
    - Key directories identified

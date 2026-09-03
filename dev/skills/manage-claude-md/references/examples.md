@@ -15,11 +15,6 @@ For small projects or when starting fresh:
 ```markdown
 # Project Name
 
-## Commands
-- `npm run build` - Build the project
-- `npm run test` - Run tests
-- `npm run dev` - Start dev server
-
 ## Structure
 src/
 ├── index.ts      # Entry point
@@ -41,14 +36,6 @@ For typical projects (~60 lines):
 # Project Name
 
 Brief description of what this project does.
-
-## Commands
-- `npm run build` - Build for production
-- `npm run dev` - Start development server
-- `npm run test` - Run test suite
-- `npm run test:watch` - Run tests in watch mode
-- `npm run typecheck` - Run TypeScript compiler
-- `npm run lint` - Run ESLint
 
 ## Project Structure
 src/
@@ -96,12 +83,6 @@ packages/
 ├── config/        # Shared configs (ESLint, TypeScript)
 └── utils/         # Shared utilities
 
-## Commands (from root)
-- `pnpm build` - Build all packages
-- `pnpm dev` - Start all apps in dev mode
-- `pnpm test` - Run all tests
-- `pnpm lint` - Lint all packages
-
 ## Working on Specific Apps
 Each app has its own CLAUDE.md with specific instructions:
 - apps/web/CLAUDE.md - Web app specifics
@@ -122,10 +103,6 @@ When you need detailed docs but want to keep CLAUDE.md lean:
 **CLAUDE.md (kept brief):**
 ```markdown
 # Project Name
-
-## Commands
-- `make build` - Build project
-- `make test` - Run tests
 
 ## Structure
 See docs/architecture.md for detailed architecture.

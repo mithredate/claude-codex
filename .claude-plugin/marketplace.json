@@ -42,7 +42,8 @@
         "./skills/domain-modeling",
         "./skills/prototype",
         "./skills/research",
-        "./skills/weigh-feature-complexity"
+        "./skills/weigh-feature-complexity",
+        "./skills/show-me"
       ]
     },
     {

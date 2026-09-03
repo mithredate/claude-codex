@@ -30,6 +30,7 @@ Opinionated, curated Claude Code skills — vendored from upstream sources (matt
   - `research` — resolve a factual question a decision waits on via a focused research subagent
   - `prototype` — make a cheap, rough artifact (outline, stub, UI/logic) to react to
   - `weigh-feature-complexity` — break a spec or PR into features and visualize the complexity each one adds
+  - `show-me` — explain the current topic visually — pseudocode, trees, diffs, mermaid, or one HTML page
 - **deprecated** — skills phased out, kept installable during transitions
   - `handoff` — compact the current conversation into a handoff doc for the next session
 
